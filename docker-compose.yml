@@ -1,0 +1,42 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - db
+    profiles:
+      - dev
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    profiles:
+      - dev
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: oblito_user
+      POSTGRES_PASSWORD: oblito_password
+      POSTGRES_DB: oblito_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    profiles:
+      - dev
+
+volumes:
+  db_data:
