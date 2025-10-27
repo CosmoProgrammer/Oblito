@@ -19,6 +19,8 @@ services:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
+    environment:
+      - BACKEND_URL=http://backend:8000
     depends_on:
       - backend
     profiles:
@@ -37,6 +39,16 @@ services:
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     profiles:
       - dev
+  
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    profiles:
+      - dev
 
 volumes:
   db_data:
+  redis_data:
