@@ -39,6 +39,25 @@ The `dev` profile binds mount your source code into the containers and so suppor
 
 Obviously, changes to `.env` also require container restarts.
 
+### Database Setup
+
+1. Push the schema with `drizzle-kit`.
+
+    ```powershell
+    cd backend
+    npx drizzle-kit push
+    ```
+
+2. You can check if it worked by running the following commands.
+
+    ```powershell
+    docker compose exec -it db psql -U oblito_user -d oblito_db
+    \dt
+    \d <table_name>
+    \q
+    ```
+
+
 ## Contributing
 
 1. Create a new branch from `main` for every change. Use [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/), for example:
