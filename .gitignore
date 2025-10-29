@@ -10,3 +10,4 @@ npm-debug.log
 
 /backend/dist
 *.tsbuildinfo
+.DS_Store
