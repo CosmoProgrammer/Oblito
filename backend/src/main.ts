@@ -1,3 +1,24 @@
+import { inspect } from 'util';
+
+process.on('uncaughtException', (err) => {
+  try {
+    console.error('uncaughtException:', inspect(err, { showHidden: true, depth: 6 }));
+    if ((err as any)?.stack) console.error('stack:', (err as any).stack);
+  } catch (e) {
+    console.error('Failed to print uncaughtException:', e);
+  }
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  try {
+    console.error('unhandledRejection:', inspect(reason, { showHidden: true, depth: 6 }));
+    if ((reason as any)?.stack) console.error('stack:', (reason as any).stack);
+  } catch (e) {
+    console.error('Failed to print unhandledRejection:', e);
+  }
+});
+
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';

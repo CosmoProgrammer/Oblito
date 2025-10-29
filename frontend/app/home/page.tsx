@@ -31,7 +31,7 @@ export default function HomePage() {
             {loading ? (
                 <p>Loading...</p>
             ) : user ? (
-                <p>Welcome, {user}!</p>
+                <p className="font-bold">Welcome, {user}!</p>
             ) : (
                 <p>You are not logged in.</p>
             )}
