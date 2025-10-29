@@ -1,7 +1,10 @@
 import { Router } from "express";
 import passport from "passport";
 import jwt from "jsonwebtoken";
-import 'dotenv/config';
+
+import db  from "../db/index.js";
+import { eq } from "drizzle-orm";
+import { users } from "../db/schema.js";
 
 import { protect } from "../middleware/auth-middleware.js";
 
@@ -11,22 +14,48 @@ router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 
 
 router.get('/auth/google/callback',
     passport.authenticate('google', { failureRedirect: `${process.env.CLIENT_URL}/login`, session: false }),
-    (req, res) => {
-        const user = req.user as { id: string; email: string; name: string; provider: string };
-        const token = jwt.sign(
-            { id: user.id, email: user.email },
-            process.env.JWT_SECRET || 'default_secret',
-            { expiresIn: '1h' }
-        );
+    async (req, res) => {
+        try{
+            const user = req.user as { id: string; email: string; name: string; provider: string };
+            
+            let dbUser = await db.query.users.findFirst({
+                where: eq(users.googleId, user.id)
+            });
 
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 3600000, // 1 hour
-        });
+            if (!dbUser) {
+                const [firstName, ...lastNameParts] = user.name.split(' ');
+                const lastName = lastNameParts.join(' ');
+                const newUser = await db.insert(users).values({
+                    googleId: user.id,
+                    email: user.email,
+                    firstName: firstName,
+                    lastName: lastName  || null,
+                    role: 'customer',
+                }).returning();
+                dbUser = newUser[0];
+                if (!dbUser) {
+                    return res.redirect(`${process.env.CLIENT_URL}/login`);
+                }
+            }
 
-        res.redirect(`${process.env.CLIENT_URL}/home`);
+            const token = jwt.sign(
+                { id: dbUser.id, email: dbUser.email },
+                process.env.JWT_SECRET || 'default_secret',
+                { expiresIn: '1h' }
+            );
+
+            res.cookie("token", token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 3600000, 
+            });
+
+            res.redirect(`${process.env.CLIENT_URL}/home`);
+        } catch (e) {
+            console.error('Error during Google OAuth callback:', e);
+            res.redirect(`${process.env.CLIENT_URL}/login`);
+        }
     }
 );
 

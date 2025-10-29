@@ -44,8 +44,7 @@ Obviously, changes to `.env` also require container restarts.
 1. Push the schema with `drizzle-kit`.
 
     ```powershell
-    cd backend
-    npx drizzle-kit push
+    docker compose exec backend npx drizzle-kit push
     ```
 
 2. You can check if it worked by running the following commands.
