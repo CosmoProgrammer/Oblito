@@ -16,7 +16,7 @@ router.get('/auth/google/callback',
     passport.authenticate('google', { failureRedirect: `${process.env.CLIENT_URL}/login`, session: false }),
     async (req, res) => {
         try{
-            const user = req.user as { id: string; email: string; name: string; provider: string };
+            const user = req.user as { id: string; email: string; name: string; provider: string, profilePictureUrl: string | null };
             
             let dbUser = await db.query.users.findFirst({
                 where: eq(users.googleId, user.id)
@@ -31,6 +31,7 @@ router.get('/auth/google/callback',
                     firstName: firstName,
                     lastName: lastName  || null,
                     role: 'customer',
+                    profilePictureUrl: user.profilePictureUrl,
                 }).returning();
                 dbUser = newUser[0];
                 if (!dbUser) {
@@ -39,7 +40,7 @@ router.get('/auth/google/callback',
             }
 
             const token = jwt.sign(
-                { id: dbUser.id, email: dbUser.email },
+                { id: dbUser.id, email: dbUser.email, profilePictureUrl: dbUser.profilePictureUrl },
                 process.env.JWT_SECRET || 'default_secret',
                 { expiresIn: '1h' }
             );

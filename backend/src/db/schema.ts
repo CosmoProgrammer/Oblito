@@ -13,6 +13,7 @@ export const users = pgTable('users', {
     googleId: text('google_id').unique(),
     facebookId: text('facebook_id').unique(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    profilePictureUrl: text('profile_picture_url'),
 });
 
 export const addresses = pgTable('addresses', {

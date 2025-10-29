@@ -18,6 +18,7 @@ try {
                 email: profile.emails?.[0]?.value,
                 name: profile.displayName,
                 provider: 'google',
+                profilePictureUrl: profile.photos?.[0]?.value || null,
             };
             return done(null, user);
         })
