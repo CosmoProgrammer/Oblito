@@ -16,6 +16,10 @@ export default function LoginPage() {
     router.push("http://localhost:8000/auth/google");
   }
 
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+  }
+
   const LoginForm = () => {
     return (
       <div className="login-container">
