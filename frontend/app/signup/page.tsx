@@ -29,7 +29,7 @@ const SignupPage = () => {
                     "Content-Type": "application/json",
                     Accept: "application/json",
                 },
-                body: JSON.stringify({ email, password, firstName, lastName }),
+                body: JSON.stringify({ email, password, firstName, lastName, userRole: 'customer' }),
             });
 
             const data = await res.json().catch(() => null);

@@ -17,6 +17,7 @@ const signUpSchema = z.object({
     lastName: z.string().optional(),
     email: z.email("Invalid email address"),
     password: z.string().min(6, "Password must be at least 6 characters long"),
+    userRole: z.enum(['customer', 'retailer', 'wholesaler']).optional(),
 });
 
 const loginSchema = z.object({
@@ -26,7 +27,14 @@ const loginSchema = z.object({
 
 const generateToken = (dbUser: typeof users.$inferSelect) => {
     return jwt.sign(
-        { id: dbUser.id, email: dbUser.email, profilePictureUrl: dbUser.profilePictureUrl },
+        { 
+            id: dbUser.id, 
+            email: dbUser.email, 
+            profilePictureUrl: dbUser.profilePictureUrl, 
+            firstName: dbUser.firstName, 
+            lastName: dbUser.lastName, 
+            role: dbUser.role 
+        },
         process.env.JWT_SECRET || 'default_secret',
         { expiresIn: '1h' }
     );
@@ -84,7 +92,7 @@ router.get('/auth/google/callback',
 
 router.post('/auth/signup', async (req, res) => {
     try {
-        const {email, password, firstName, lastName} = signUpSchema.parse(req.body);
+        const {email, password, firstName, lastName, userRole} = signUpSchema.parse(req.body);
 
         const existingUser = await db.query.users.findFirst({
             where: eq(users.email, email),
@@ -102,7 +110,7 @@ router.post('/auth/signup', async (req, res) => {
             passwordHash,
             firstName,
             lastName: lastName || null,
-            role: 'customer',
+            role: userRole || 'customer',
         }).returning();
         const dbUser = newUsers[0];
         if (!dbUser) {
