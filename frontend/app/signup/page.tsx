@@ -15,7 +15,7 @@ const SignupPage = () => {
     const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
     const [message, setMessage] = useState<string | null>(null);
 
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiBase = process.env.BACKEND_URL || "http://localhost:8000";
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
