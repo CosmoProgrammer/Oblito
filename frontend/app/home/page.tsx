@@ -132,19 +132,6 @@ function handleAppliedSearch(event: React.FormEvent<HTMLFormElement>) {
             ) : (
                 <p>You are not logged in.</p>
             )}
-            <nav className="main-nav">
-        <div className="nav-logo">Oblito</div>
-        <form className="nav-search" onSubmit={handleAppliedSearch}>
-          <input type="text" placeholder="Search Oblito..." value={searchQuery} onChange={handleSearchChange} />
-          <button type="submit">🔍</button>
-        </form>
-
-        <div className="nav-links">
-          <a href="#">Hello, {user}</a>
-          <a href="#">Returns & Orders</a>
-          <a href="#">Cart</a>
-        </div>
-      </nav>
 
             <div className="product-grid-container">
         {filteredProducts.map((product) => (
@@ -157,14 +144,6 @@ function handleAppliedSearch(event: React.FormEvent<HTMLFormElement>) {
             ))}
           </div>
 
-          <footer className="main-footer">
-        <div className="footer-links">
-          <a href="#">About Us</a>
-          <a href="#">Careers</a>
-          <a href="#">Help Center</a>
-          <a href="#">Terms & Conditions</a>
-        </div>
-        </footer>
         </div>
     );
 }

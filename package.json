@@ -1,0 +1,27 @@
+{
+  "name": "oblito",
+  "version": "1.0.0",
+  "description": "1. Install NodeJS v22.17.0 LTS. You can use a NodeJS version manager like `nvm` to do this:",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CosmoProgrammer/Oblito.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/CosmoProgrammer/Oblito/issues"
+  },
+  "homepage": "https://github.com/CosmoProgrammer/Oblito#readme",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1"
+  }
+}
