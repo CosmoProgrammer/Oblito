@@ -142,7 +142,15 @@ router.post('/auth/login',  async (req, res) => {
         const token = generateToken(dbUser);
         setTokenCookie(res, token);
 
-        res.redirect(`${process.env.CLIENT_URL}/home`);
+        res.status(200).json({ 
+            message: 'Login successful',
+            user: {
+                id: dbUser.id,
+                email: dbUser.email,
+                firstName: dbUser.firstName,
+                // add any other user details your app needs
+            }
+        });
     } catch (e) {
         if (e instanceof z.ZodError) {
             return res.status(400).json({ errors: e.issues });

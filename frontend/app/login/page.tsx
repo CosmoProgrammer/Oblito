@@ -13,6 +13,8 @@ function LoginForm({ userRole,
   password,
   status,
   message,
+  handleSetEmail,
+  handleSetPassword,
   handleSignIn,
   handleGoogleSignIn
 }: LoginFormProps) {
@@ -27,6 +29,8 @@ function LoginForm({ userRole,
             <input
               type="email"
               id="email"
+              value={email}
+              onChange={handleSetEmail}
               name="email"
               placeholder="you@example.com"
             />
@@ -36,6 +40,8 @@ function LoginForm({ userRole,
             <input
               type="password"
               id="password"
+              value={password}
+              onChange={handleSetPassword}
               name="password"
               placeholder="••••••••"
             />
@@ -89,6 +95,14 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = () => {
     router.push("http://localhost:8000/auth/google");
+  }
+
+  const handleSetEmail = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+  }
+
+  const handleSetPassword = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
   }
    const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -161,8 +175,8 @@ export default function LoginPage() {
   password={password}
   status={status}
   message={message}
-  handleSetEmail={(e) => setEmail(e.target.value)}
-  handleSetPassword={(e) => setPassword(e.target.value)}
+  handleSetEmail={handleSetEmail}
+  handleSetPassword={handleSetPassword}
   handleSignIn={handleSignIn}
   handleGoogleSignIn={handleGoogleSignIn}
 />}
