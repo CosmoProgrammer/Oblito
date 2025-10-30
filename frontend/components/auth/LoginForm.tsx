@@ -37,6 +37,10 @@ export default function LoginForm({ userRole }: Props) {
       const res = await fetch(`${apiBase}/auth/login`, {
         method: "POST",
         credentials: "include",
+        headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+        },
         body: JSON.stringify({ email, password }),
       });
 
