@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import LoginPage from '../login/page';
+import "./signupStyle.css";
 
 const SignupPage = () => {
     const router = useRouter();
@@ -48,32 +50,68 @@ const SignupPage = () => {
     };
 
     return (
-        <main style={{ padding: 24, fontFamily: 'system-ui, sans-serif' }}>
-            <h1>Signup (test form)</h1>
-            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12, maxWidth: 420 }}>
-                <label>
-                    First name
-                    <input value={firstName} onChange={(e) => setFirstName(e.target.value)} name="firstName" required />
-                </label>
-                <label>
-                    Last name
-                    <input value={lastName} onChange={(e) => setLastName(e.target.value)} name="lastName" />
-                </label>
-                <label>
-                    Email
-                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} name="email" required />
-                </label>
-                <label>
-                    Password
-                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} name="password" required minLength={6} />
-                </label>
+        <main>
+            <div className="page-wrapper">
+            <div className="signup-container">
+                <h1>Create Account</h1>
+                <p className="welcome-message">Join Oblito as a Buyer</p>
+                
+                <form onSubmit={handleSubmit} className="signup-form">
+                    <div className="form-group">
+                        <label htmlFor="firstName">First Name</label>
+                        <input 
+                            id="firstName"
+                            value={firstName} 
+                            onChange={(e) => setFirstName(e.target.value)} 
+                            name="firstName" 
+                            required 
+                        />
+                    </div>
+                    
+                    <div className="form-group">
+                        <label htmlFor="lastName">Last Name</label>
+                        <input 
+                            id="lastName"
+                            value={lastName} 
+                            onChange={(e) => setLastName(e.target.value)} 
+                            name="lastName" 
+                        />
+                    </div>
 
-                <div>
-                    <button type="submit" disabled={status === "loading"}>
-                        {status === "loading" ? "Signing up..." : "Sign up"}
+                    <div className="form-group">
+                        <label htmlFor="email">Email</label>
+                        <input 
+                            id="email"
+                            type="email" 
+                            value={email} 
+                            onChange={(e) => setEmail(e.target.value)} 
+                            name="email" 
+                            required 
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="password">Password</label>
+                        <input 
+                            id="password"
+                            type="password" 
+                            value={password} 
+                            onChange={(e) => setPassword(e.target.value)} 
+                            name="password" 
+                            required 
+                            minLength={6} 
+                        />
+                    </div>
+
+                    <button type="submit" className="btn btn-primary" disabled={status === "loading"}>
+                        {status === "loading" ? "Creating Account..." : "Sign Up"}
                     </button>
+                </form>
+
+                <div className="alternative-logins">
+                  <a href="/login">Already have an account? Sign In</a>
                 </div>
-            </form>
+            </div>
 
             {message && (
                 <div style={{ marginTop: 16 }}>
@@ -81,7 +119,9 @@ const SignupPage = () => {
                     <pre style={{ whiteSpace: 'pre-wrap' }}>{message}</pre>
                 </div>
             )}
+        </div>
         </main>
+
     );
 };
 

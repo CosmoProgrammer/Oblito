@@ -3,29 +3,25 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import "./loginStyle.css";
+import type {LoginFormProps} from "@/types/LoginFormProps";
 
-export default function LoginPage() {
-  const [userRole, setUserRole] = useState("Buyer");
-  const router = useRouter();
 
-  function handleRoleClick(role : string) {
-    setUserRole(prevRole => role);
-  }
+const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-  const handleGoogleSignIn = () => {
-    router.push("http://localhost:8000/auth/google");
-  }
+function LoginForm({ userRole,
+  email,
+  password,
+  status,
+  message,
+  handleSignIn,
+  handleGoogleSignIn
+}: LoginFormProps) {
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-  }
-
-  const LoginForm = () => {
-    return (
+  return (
       <div className="login-container">
         <h1>OBLITO</h1>
         <p className="welcome-message">{userRole} Sign In</p>
-        <form id="login-form">
+        <form id="login-form" onSubmit={handleSignIn}>
           <div className="form-group">
             <label htmlFor="email">{userRole.charAt(0).toUpperCase() + userRole.slice(1)} Email ID</label>
             <input
@@ -68,12 +64,66 @@ export default function LoginPage() {
         </div>)}
         <div className="signup-link">
           <p>
-            New {userRole}? <a href="#">Create a {userRole} account</a>
+            New {userRole}? <a href="../signup">Create a {userRole} account</a>
           </p>
         </div>
       </div>
     );
+}
+export default function LoginPage() {
+  const [userRole, setUserRole] = useState("Buyer");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState<string | null>(null);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const router = useRouter();
+
+  function handleRoleClick(role : string) {
+    setUserRole(prevRole => role);
+    setEmail("");
+    setPassword("");
+    setStatus("idle");
+    setMessage(null);
   }
+
+  const handleGoogleSignIn = () => {
+    router.push("http://localhost:8000/auth/google");
+  }
+   const handleSignIn = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setStatus("loading");
+        setMessage(null);
+
+        try {
+            console.log("Attempting login with:", { email, password });
+            const res = await fetch(`${apiBase}/auth/login`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({ email, password, }),
+            });
+
+            const data = await res.json().catch(() => null);
+
+            console.log("Login response:", { res, data });
+
+            if (res.ok) {
+                setStatus("success");
+                setMessage(data?.message || "Login succeeded");
+                router.push('/home');
+            } else {
+                setStatus("error");
+                setMessage(data?.message || JSON.stringify(data) || `HTTP ${res.status}`);
+            }
+        } catch (err: any) {
+            setStatus("error");
+            setMessage(err?.message || String(err));
+        }
+    };
 
   return(
   <div className="page-wrapper">
@@ -106,7 +156,16 @@ export default function LoginPage() {
         </div>
       </div>
 
-{userRole && <LoginForm />}
+{userRole && <LoginForm userRole={userRole}
+  email={email}
+  password={password}
+  status={status}
+  message={message}
+  handleSetEmail={(e) => setEmail(e.target.value)}
+  handleSetPassword={(e) => setPassword(e.target.value)}
+  handleSignIn={handleSignIn}
+  handleGoogleSignIn={handleGoogleSignIn}
+/>}
 </div>
 )
     
