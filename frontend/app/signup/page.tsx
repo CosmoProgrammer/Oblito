@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import LoginPage from '../login/page';
 import "./signupStyle.css";
 
 const SignupPage = () => {
@@ -25,10 +24,6 @@ const SignupPage = () => {
         try {
             const res = await fetch(`${apiBase}/auth/signup`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
-                },
                 credentials: "include",
                 body: JSON.stringify({ email, password, firstName, lastName }),
             });
