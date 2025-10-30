@@ -3,7 +3,7 @@
 import ProductCard from "@/components/ProductCard";
 import { use, useEffect, useState } from "react";
 import { ProductProps } from "@/types/ProductProps";
-import './home.css';
+
 
 export default function HomePage() {
     const [user, setUser] = useState<string | null>(null);
@@ -123,7 +123,7 @@ function handleAppliedSearch(event: React.FormEvent<HTMLFormElement>) {
         product.name.toLowerCase().startsWith(appliedSearch.toLowerCase())
     );
     return (
-        <div className="main-content">
+        <div className="max-w-[1500px] mx-auto p-[20px] grow bg-[#FFE4C4] w-full">
             <h1>Home</h1>
             {loading ? (
                 <p>Loading...</p>
@@ -133,12 +133,12 @@ function handleAppliedSearch(event: React.FormEvent<HTMLFormElement>) {
                 <p>You are not logged in.</p>
             )}
 
-            <div className="product-grid-container">
+            <div className="grid grid-cols-4 gap-[24px] justify-items-center p-[20px]">
         {filteredProducts.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
       </div>
-      <div className="product-grid-container">
+      <div className="grid grid-cols-4 gap-[24px] justify-items-center p-[20px]">
             {filteredBooks.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
