@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ProductProps } from "../types/ProductProps";
 
 interface ProductCardProps {
@@ -17,7 +18,9 @@ export default function ProductCard({ product }: ProductCardProps) {
         />
 
         <div className="p-4 flex flex-col flex-grow">
+          <Link href={`/product/${product.id}`} className="no-underline">
           <h3 className="text-lg font-semibold text-[#333] mb-2">{name}</h3>
+          </Link>
 
           <p className="text-sm text-gray-500 mb-3 leading-tight flex-grow">
             {description}

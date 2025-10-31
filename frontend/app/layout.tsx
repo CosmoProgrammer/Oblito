@@ -12,11 +12,7 @@ export default function RootLayout({
 }: {
     children: React.ReactNode
 }) {
-    const [user, setUser] = useState<string | null>(null);
     const pathname = usePathname();
-    const categories=['Electronics', 'Books', 'Clothing', 'Home', 'Toys']
-
-
     const noNavbarPaths = ['/login', '/signup'];
     const showNavbar = !noNavbarPaths.includes(pathname);
 
