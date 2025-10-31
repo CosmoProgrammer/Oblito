@@ -26,6 +26,8 @@ import passport from "passport";
 import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/auth-routes.js";
+import productRoutes from "./routes/product-routes.js";
+
 import "../passport-config.js";
 
 const app = express();
@@ -48,6 +50,7 @@ app.get('/', (req, res) => {
 });
 
 app.use("/", authRoutes);
+app.use("/", productRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
