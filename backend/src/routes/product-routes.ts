@@ -28,6 +28,12 @@ const productQuerySchema = z.object({
     path: ["maxPrice"],
 });
 
+const idParamSchema = z.object({
+    id: z.uuid({
+        message: "Invalid product ID format (must be a UUID)",
+    })
+});
+
 router.get('/products',  async (req, res) => {
     try{
         const {page, limit, sort, minPrice, maxPrice, categories: categoriesReq} = productQuerySchema.parse(req.query);
@@ -103,6 +109,23 @@ router.get('/products',  async (req, res) => {
             return res.status(400).json({ errors: e.issues });
         }
         console.error('Error fetching products:', e);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+router.get('/products/:id', async (req, res) => {
+    try {
+        const { id: productId } = idParamSchema.parse(req.params);
+        const product = await db.query.products.findFirst({
+            where: eq(products.id, productId),
+        });
+
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+        res.json({ product });
+    } catch (e) {
+        console.error('Error fetching product by ID:', e);
         res.status(500).json({ message: 'Internal server error' });
     }
 });
