@@ -2,7 +2,7 @@
 import './globals.css';
 
 
-import Navbar from '@/components/navbar';
+import Navbar from '@/components/NavBar';
 import Footer from '@/components/Footer';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -14,6 +14,8 @@ export default function RootLayout({
 }) {
     const [user, setUser] = useState<string | null>(null);
     const pathname = usePathname();
+    const categories=['Electronics', 'Books', 'Clothing', 'Home', 'Toys']
+
 
     const noNavbarPaths = ['/login', '/signup'];
     const showNavbar = !noNavbarPaths.includes(pathname);
@@ -22,13 +24,7 @@ export default function RootLayout({
         <html lang="en">
             <body>
                 {showNavbar && (<>
-                <Navbar 
-                    user={user}
-                    onSearch={(searchTerm) => {
-                        // Handle search at app level if needed
-                        console.log('Search term:', searchTerm);
-                    }}
-                />
+                <Navbar />
                 </>)}
                 {children}
                 {showNavbar && (<Footer />)}
