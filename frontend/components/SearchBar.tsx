@@ -18,44 +18,50 @@ const SearchBar: React.FC<SearchBarProps> = ({ categories, onFilterChange }) => 
         setSearchQuery(query);
 
         if(query === "") {
-            // If the search box is cleared, immediately trigger filter change
             onFilterChange("", selectedCategories);
         }
     };
 
     const handleCategoryChange = (category: string) => {
-        // Create a new array based on whether the category is already selected
         const newCategories = selectedCategories.includes(category)
-            ? selectedCategories.filter(c => c !== category) // Remove category
-            : [...selectedCategories, category]; // Add category
+            ? selectedCategories.filter(c => c !== category)
+            : [...selectedCategories, category];
         
         setSelectedCategories(newCategories);
-        // Immediately trigger a filter change when a checkbox is toggled
         onFilterChange(searchQuery, newCategories);
     };
 
     const handleAppliedSearch = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        // Trigger the filter change with the current query and categories
         onFilterChange(searchQuery, selectedCategories);
     };
 
     return (
-        <form className="nav-search" onSubmit={handleAppliedSearch}>
-            
-            <SearchCategories 
-                categories={categories} 
-                selectedCategories={selectedCategories} 
-                onCategoryChange={handleCategoryChange} 
-            />
-
+        <form 
+            className="grow flex items-center max-w-5xl mx-4" 
+            onSubmit={handleAppliedSearch}
+        >
             <input 
                 type="text" 
                 placeholder="Search Oblito..." 
                 value={searchQuery} 
-                onChange={handleSearchChange} 
+                onChange={handleSearchChange}
+                className="w-full p-2.5 text-base border-none rounded-l-md text-black bg-white focus:outline-none focus:ring-2 focus:ring-[#febd69]"
             />
-            <button type="submit">🔍</button>
+            <button 
+                type="submit"
+                className="bg-[#febd69] hover:bg-[#f3a847] px-4 py-2.5 rounded-r-md border-none cursor-pointer transition-colors"
+            >
+                🔍
+            </button>
+
+            <div className="ml-3">
+                <SearchCategories 
+                    categories={categories} 
+                    selectedCategories={selectedCategories} 
+                    onCategoryChange={handleCategoryChange} 
+                />
+            </div>
         </form>
     );
 };

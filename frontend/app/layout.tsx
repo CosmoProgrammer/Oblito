@@ -2,7 +2,7 @@
 import './globals.css';
 
 
-import Navbar from '@/components/NavBar';
+import NavBar from '@/components/NavBar';
 import Footer from '@/components/Footer';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -24,7 +24,7 @@ export default function RootLayout({
         <html lang="en">
             <body>
                 {showNavbar && (<>
-                <Navbar />
+                <NavBar />
                 </>)}
                 {children}
                 {showNavbar && (<Footer />)}
