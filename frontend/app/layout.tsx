@@ -19,11 +19,14 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body>
-                {showNavbar && (<>
+                <div className="bg-[#FFE4C4]">
+                    {showNavbar && (<>
                 <NavBar />
                 </>)}
                 {children}
                 {showNavbar && (<Footer />)}
+                </div>
+                
             </body>
         </html>
     );

@@ -7,8 +7,6 @@ import {  allProducts} from "../data/products";
 export default function HomePage() {
     const [user, setUser] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [appliedSearch, setAppliedSearch] = useState("");
 
     useEffect(() => {
         async function fetchUser() {

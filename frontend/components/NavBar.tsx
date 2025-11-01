@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import SearchBar from './SearchBar';
+import Link from 'next/link';
 
 const Navbar = () => {
     const categories=['Electronics', 'Books', 'Clothing', 'Home', 'Toys']
@@ -13,7 +14,10 @@ const Navbar = () => {
 
     return (
         <nav className="bg-[#131921] text-white px-3 py-2.5 flex items-center justify-between w-full">
+
+            <Link href="/home">
             <div className="text-2xl font-bold text-[#febd69] ml-2">Oblito</div>
+            </Link>
             
             <SearchBar 
                 onFilterChange={onFilterChange} 

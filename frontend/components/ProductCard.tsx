@@ -11,6 +11,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <div className="flex justify-center w-full h-full">
       <article className="bg-[#ebe6e6] w-[300px] max-w-[320px] rounded-[18px] shadow-lg overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col h-full text-center">
+        
         <img
           src={imageUrl}
           alt={name}
@@ -18,7 +19,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         />
 
         <div className="p-4 flex flex-col flex-grow">
-          <Link href={`/product/${product.id}`} className="no-underline">
+          <Link href={`/product/${product.id}`} className="no-underline hover:underline">
           <h3 className="text-lg font-semibold text-[#333] mb-2">{name}</h3>
           </Link>
 
