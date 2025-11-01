@@ -70,11 +70,12 @@ async function seed() {
       const description = `Description for product ${i}`;
       const price = (9.99 + i).toFixed(2);
       const categoryId = categoryIds[i % categoryIds.length];
-      const imageURLs = `{"https://example.com/img${i}.jpg"}`; 
+      const imageURLs = `{"https://example.com/img${i}.jpg"}`;
+      const creatorId = userIds[(i - 1) % userIds.length];
       const r = await client.query(
-        `INSERT INTO products (name, description, price, category_id, image_urls)
-         VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-        [name, description, price, categoryId, imageURLs]
+        `INSERT INTO products (name, description, price, category_id, image_urls, creator_id)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+        [name, description, price, categoryId, imageURLs, creatorId]
       );
       productIds.push(r.rows[0].id);
     }
