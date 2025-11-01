@@ -41,13 +41,19 @@ Obviously, changes to `.env` also require container restarts.
 
 ### Database Setup
 
-1. Push the schema with `drizzle-kit`.
+1. Push the schema.
 
     ```powershell
-    docker compose exec backend npx drizzle-kit push
+    docker compose exec backend npm run db:push
     ```
 
-2. You can check if it worked by running the following commands.
+2. Seed the database with sample data.
+
+    ```powershell
+    docker compose exec backend npm run db:seed
+    ```
+
+3. You can check if it worked by running the following commands.
 
     ```powershell
     docker compose exec -it db psql -U oblito_user -d oblito_db
