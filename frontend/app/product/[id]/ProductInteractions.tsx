@@ -15,6 +15,7 @@ type ProductInteractionsProps = {
 export function ProductInteractions({ product }: ProductInteractionsProps) {
   // All client-side interactive logic lives here
   const [quantity, setQuantity] = useState(1);
+  const [addedMsg, setAddedMsg] = useState<string | null>(null);
 
   function increaseQuantity() {
     setQuantity(prevQuantity => prevQuantity + 1);
@@ -23,6 +24,26 @@ export function ProductInteractions({ product }: ProductInteractionsProps) {
   function decreaseQuantity() {
     // Prevent quantity from going below 1
     setQuantity(prevQuantity => (prevQuantity > 1 ? prevQuantity - 1 : 1));
+  }
+
+  function addToCart() {
+    const CART_KEY = "oblito_cart";
+
+    const raw = localStorage.getItem(CART_KEY);
+    const current: { id: string; quantity: number }[] = raw ? JSON.parse(raw) : [];
+
+    const prodId = (product as any).id;
+    if (prodId) {
+      const existing = current.find(it => it.id === prodId);
+      if (existing) {
+        existing.quantity = Math.min(999, existing.quantity + quantity);
+      } else {
+        current.push({ id: prodId, quantity });
+      }
+      localStorage.setItem(CART_KEY, JSON.stringify(current));
+      setAddedMsg("Added to cart");
+      setTimeout(() => setAddedMsg(null), 2000);
+    } 
   }
 
   return (
@@ -55,9 +76,15 @@ export function ProductInteractions({ product }: ProductInteractionsProps) {
       </div>
 
       {/* Add to Cart Button */}
-      <button className="w-full sm:w-auto bg-[#febd69] hover:bg-[#f5a623] text-black font-medium py-3 px-10 rounded-lg transition-colors">
+      <button 
+        onClick={addToCart}
+        className="w-full sm:w-auto bg-[#febd69] hover:bg-[#f5a623] text-black font-medium py-3 px-10 rounded-lg transition-colors">
         Add to Cart
       </button>
+
+      {addedMsg && (
+        <p className="added-message font-bold">{addedMsg}</p>
+      )}
 
       {/* Description */}
       <div>

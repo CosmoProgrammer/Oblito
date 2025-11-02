@@ -40,11 +40,11 @@ export function CarouselDemo() {
                 onClick={() => mainApi?.scrollTo(index)}
               >
                 <Card className="border-0 shadow-none rounded-md overflow-hidden">
-                  <CardContent className="p-0 relative w-full h-[120px]">
+                  <CardContent className="p-0 w-full h-[120px]">
                     <img
                       src={image.src}
                       alt={image.alt}
-                      className="w-full h-full object-cover block"
+                      className="w-full h-[120px] object-cover block"
                     />
                   </CardContent>
                 </Card>
@@ -66,7 +66,7 @@ export function CarouselDemo() {
                   <img
                     src={image.src}
                     alt={image.alt}
-                    className="w-full h-full object-cover block"
+                    className="w-full h-[600px] object-cover block"
                   />
                 </CardContent>
               </Card>

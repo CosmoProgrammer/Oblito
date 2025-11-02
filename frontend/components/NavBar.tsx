@@ -31,7 +31,7 @@ const Navbar = () => {
                 <a href="#" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded mr-1">
                     Returns & Orders
                 </a>
-                <a href="#" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded">
+                <a href="/cart" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded">
                     Cart
                 </a>
             </div>
