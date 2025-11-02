@@ -1,12 +1,21 @@
 import Link from 'next/link';
 import type { ProductProps } from "../types/ProductProps";
+import { useCart } from '@/app/cart/cart_util';
+import { use } from 'react';
 
 interface ProductCardProps {
   product: ProductProps;
 }
 
+
 export default function ProductCard({ product }: ProductCardProps) {
-  const { name, description, price, imageUrl, rating } = product;
+  const { name, description, price, imageUrl, rating, id } = product;
+  const { addItemToCart,addedMsg } = useCart();
+
+  function addToCartHandler(productId: string) {
+  addItemToCart(productId, 1);
+}
+
 
   return (
     <div className="flex justify-center w-full h-full">
@@ -36,11 +45,17 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         <div className="mt-auto">
           <button
-            className="w-full bg-[#ffb800] hover:bg-[#f1a800] text-white font-bold py-3 rounded-b-[18px] transition-colors"
+            className="w-full bg-[#ffb800] hover:bg-[#f1a800] hover: cursor-pointer text-white font-bold py-3 rounded-b-[18px] transition-colors"
             type="button"
+            onClick={addToCartHandler.bind(null, id)}
           >
             Add to Cart
           </button>
+          {addedMsg && (
+        <p className="text-green-600 font-medium mt-3 transition-opacity duration-300">
+          {addedMsg}
+        </p>)}
+
         </div>
       </article>
     </div>

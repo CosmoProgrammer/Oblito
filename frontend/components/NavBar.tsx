@@ -32,7 +32,7 @@ const Navbar = () => {
                     Returns & Orders
                 </a>
                 <a href="/cart" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded">
-                    Cart
+                    Cart 
                 </a>
             </div>
         </nav>

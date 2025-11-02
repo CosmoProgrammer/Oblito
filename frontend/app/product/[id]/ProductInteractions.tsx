@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from 'react';
-import { Star } from 'lucide-react';
+import { use, useState } from 'react';
+import { Star } from 'lucide-react'; 
+import { useCart } from '@/app/cart/cart_util';
 
 // Define the shape of the props this component will receive
 type ProductInteractionsProps = {
@@ -9,13 +10,15 @@ type ProductInteractionsProps = {
     price: number;
     rating: number;
     description: string;
+    id: string;
   };
 };
 
 export function ProductInteractions({ product }: ProductInteractionsProps) {
   // All client-side interactive logic lives here
   const [quantity, setQuantity] = useState(1);
-  const [addedMsg, setAddedMsg] = useState<string | null>(null);
+  const { addItemToCart, addedMsg } = useCart();
+  
 
   function increaseQuantity() {
     setQuantity(prevQuantity => prevQuantity + 1);
@@ -26,25 +29,9 @@ export function ProductInteractions({ product }: ProductInteractionsProps) {
     setQuantity(prevQuantity => (prevQuantity > 1 ? prevQuantity - 1 : 1));
   }
 
-  function addToCart() {
-    const CART_KEY = "oblito_cart";
-
-    const raw = localStorage.getItem(CART_KEY);
-    const current: { id: string; quantity: number }[] = raw ? JSON.parse(raw) : [];
-
-    const prodId = (product as any).id;
-    if (prodId) {
-      const existing = current.find(it => it.id === prodId);
-      if (existing) {
-        existing.quantity = Math.min(999, existing.quantity + quantity);
-      } else {
-        current.push({ id: prodId, quantity });
-      }
-      localStorage.setItem(CART_KEY, JSON.stringify(current));
-      setAddedMsg("Added to cart");
-      setTimeout(() => setAddedMsg(null), 2000);
-    } 
-  }
+    function addToCartHandler() {
+        addItemToCart(product.id, quantity);
+    }
 
   return (
     // We start from Price, as Title/Category are in the server page
@@ -77,14 +64,14 @@ export function ProductInteractions({ product }: ProductInteractionsProps) {
 
       {/* Add to Cart Button */}
       <button 
-        onClick={addToCart}
+        onClick={addToCartHandler}
         className="w-full sm:w-auto bg-[#febd69] hover:bg-[#f5a623] text-black font-medium py-3 px-10 rounded-lg transition-colors">
         Add to Cart
       </button>
-
       {addedMsg && (
-        <p className="added-message font-bold">{addedMsg}</p>
-      )}
+        <p className="text-green-600 font-medium mt-3 transition-opacity duration-300">
+          {addedMsg}
+        </p>)}
 
       {/* Description */}
       <div>

@@ -26,6 +26,7 @@ export default async function ProductPage({params}: any) {
           <h1 className="text-4xl font-semibold text-gray-900">{product.name}</h1>
           <p className="text-sm text-gray-500 mt-1">{product.category}</p>
         </div>
+
         {/* Product Interactions */}
         <ProductInteractions product={product} />
       </div>
