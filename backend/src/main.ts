@@ -27,6 +27,7 @@ import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/auth-routes.js";
 import productRoutes from "./routes/product-routes.js";
+import categoryRoutes from "./routes/category-routes.js";
 
 import "../passport-config.js";
 
@@ -51,6 +52,7 @@ app.get('/', (req, res) => {
 
 app.use("/", authRoutes);
 app.use("/", productRoutes);
+app.use("/", categoryRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

@@ -194,8 +194,6 @@ router.get('/products/:id', async (req, res) => {
     }
 });
 
-
-
 router.post('/products', protect, checkRole(['wholesaler', 'retailer']), async (req, res) => {
     try {
         console.log('Received create product request with body:', req.body);
