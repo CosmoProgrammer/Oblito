@@ -1,15 +1,34 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import crypto from 'crypto';
  
 import db from '../db/index.js';
-import { eq, lte, gte, asc, desc, and, inArray, sql } from "drizzle-orm";
+import { eq, lte, gte, asc, desc, and, inArray, sql, ne } from "drizzle-orm";
 import { users } from '../db/schema/users.js';
 import { products } from '../db/schema/products.js';
 import { categories } from '../db/schema/categories.js';
+import { warehouses } from '../db/schema/warehouses.js';
+import { shops } from '../db/schema.js';
+import { shopInventory } from '../db/schema/shopInventory.js';
+import { warehouseInventory } from '../db/schema/warehouseInventory.js';
 
 import { protect } from "../middleware/auth-middleware.js";
+import { checkRole } from '../middleware/role-middleware.js';
+
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
 
 const router = Router();
+
+const s3Client = new S3Client({
+    region: process.env.AWS_REGION || 'eu-north-1',
+    credentials: {
+        accessKeyId: process.env.ACCESS_KEY || '',
+        secretAccessKey: process.env.SECRET_KEY || '',
+    }
+});
+const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || 'oblito';
 
 const productQuerySchema = z.object({
     page: z.preprocess((val)=>Number(val || 1), z.number().int().min(1)),
@@ -32,6 +51,48 @@ const idParamSchema = z.object({
     id: z.uuid({
         message: "Invalid product ID format (must be a UUID)",
     })
+});
+
+const uploadQuerySchema = z.object({
+    fileName: z.string().min(1),
+    fileType: z.string().min(1), // 'image/jpeg'
+});
+
+const createProductSchema = z.object({
+    name: z.string().min(3, "Name must be at least 3 characters"),
+    description: z.string().optional(),
+    price: z.coerce.number().positive("Price must be a positive number"),
+    categoryId: z.string().optional(),
+    stockQuantity: z.coerce.number().int().min(0, "Stock must be 0 or more"),
+    imageUrls: z.array(z.url("Must be a valid URL")).default([]),
+    isProxyItem: z.boolean().optional().default(false)
+});
+
+router.get('/products/upload-url', protect, checkRole(['wholesaler', 'retailer']), async (req, res) => {
+    try {
+        console.log('Received upload URL request with query:', req.query);
+        const { fileName, fileType } = uploadQuerySchema.parse(req.query);
+        const randomName = crypto.randomBytes(16).toString('hex');
+        const key = `products/${randomName}-${fileName}`;
+        const command = new PutObjectCommand({
+            Bucket: S3_BUCKET_NAME,
+            Key: key,
+            ContentType: fileType,
+        });
+
+        const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        const finalUrl = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+        console.log('Generated final url:', finalUrl);
+        console.log('Signed URL:', signedUrl);
+        res.json({ uploadUrl: signedUrl, finalUrl });
+    } catch (e) {
+        console.log('Error generating upload URL:', e);
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error fetching product by ID:', e);
+        res.status(500).json({ message: 'Internal server error' });
+    }
 });
 
 router.get('/products',  async (req, res) => {
@@ -125,9 +186,90 @@ router.get('/products/:id', async (req, res) => {
         }
         res.json({ product });
     } catch (e) {
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
         console.error('Error fetching product by ID:', e);
         res.status(500).json({ message: 'Internal server error' });
     }
 });
+
+
+
+router.post('/products', protect, checkRole(['wholesaler', 'retailer']), async (req, res) => {
+    try {
+        console.log('Received create product request with body:', req.body);
+        const user = req.user as { 
+            id: string, 
+            email: string, 
+            profilePictureUrl: string | null, 
+            firstName: string, 
+            lastName: string, 
+            role: 'customer' | 'retailer' | 'wholesaler' 
+        };
+        const { name, description, price, categoryId, stockQuantity, imageUrls, isProxyItem } = createProductSchema.parse(req.body);
+        if (isProxyItem === true && user.role !== 'retailer') {
+            return res.status(400).json({
+                message: "Invalid input",
+                errors: { isProxyItem: ["isProxyItem can only be set to true by retailers"] }
+            });
+        }
+        
+        const newProduct = await db.transaction(async (tx) => {
+            const productInsert = await tx.insert(products).values({
+                name,
+                description,
+                price: price.toString(),
+                categoryId,
+                imageURLs: imageUrls,
+                creatorId: user.id,
+            }).returning();
+
+            const createdProduct = productInsert[0];
+            if (!createdProduct) {
+                throw new Error('Failed to create product');
+            }
+
+            if(user.role === 'retailer'){
+                const shop = await tx.query.shops.findFirst({
+                    where: eq(shops.ownerId, user.id)
+                });
+                if(!shop){
+                    throw new Error('Retailer shop not found');
+                }
+
+                await tx.insert(shopInventory).values({
+                    shopId: shop.id,
+                    productId: createdProduct.id,
+                    stockQuantity: stockQuantity.toString(),
+                });
+            } else if (user.role === 'wholesaler'){
+                const warehouse = await tx.query.warehouses.findFirst({
+                    where: eq(warehouses.ownerId, user.id)
+                });
+                if(!warehouse){
+                    throw new Error('Wholesaler warehouse not found');
+                }
+
+                await tx.insert(warehouseInventory).values({
+                    warehouseId: warehouse.id,
+                    productId: createdProduct.id,
+                    stockQuantity: stockQuantity.toString(),
+                });
+            }
+            return createdProduct;
+        });
+
+        res.status(201).json(newProduct);
+    } catch (e) {
+        console.log('Error creating product:', e);
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error fetching product by ID:', e);
+        
+        res.status(500).json({ message: e });
+    }
+}); 
 
 export default router;

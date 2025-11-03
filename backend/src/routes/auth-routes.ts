@@ -7,6 +7,8 @@ import { z } from "zod";
 import db  from "../db/index.js";
 import { eq } from "drizzle-orm";
 import { users } from "../db/schema/users.js";
+import { shops } from "../db/schema/shops.js";
+import { warehouses } from "../db/schema/warehouses.js";
 
 import { protect } from "../middleware/auth-middleware.js";
 
@@ -105,14 +107,37 @@ router.post('/auth/signup', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        const newUsers = await db.insert(users).values({
-            email,
-            passwordHash,
-            firstName,
-            lastName: lastName || null,
-            role: userRole || 'customer',
-        }).returning();
-        const dbUser = newUsers[0];
+
+        const dbUser = await db.transaction(async (tx) => {
+            const newUsers = await tx.insert(users).values({
+                email,
+                passwordHash,
+                firstName,
+                lastName: lastName || null,
+                role: userRole || 'customer',
+            }).returning();
+
+            const newUser = newUsers[0];
+            if (!newUser) {
+                throw new Error("Failed to create user.");
+            }
+
+            if (newUser.role === 'retailer') {
+                await tx.insert(shops).values({
+                    ownerId: newUser.id,
+                    name: `${newUser.firstName}'s Shop`,
+                });
+            } else if (newUser.role === 'wholesaler') {
+                await tx.insert(warehouses).values({
+                    ownerId: newUser.id,
+                    name: `${newUser.firstName}'s Warehouse`,
+                });
+            }
+
+            return newUser;
+
+        });
+
         if (!dbUser) {
             return res.status(500).json({ message: 'Internal server error' });
         }

@@ -5,9 +5,9 @@ import { addresses } from './addresses.js';
 export const shops = pgTable('shops', {
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: uuid('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    name: text('name').notNull(),
+    name: text('name'),
     description: text('description'),
-    addressId: uuid('address_id').notNull().references(() => addresses.id, { onDelete: 'cascade' }),
+    addressId: uuid('address_id').references(() => addresses.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
