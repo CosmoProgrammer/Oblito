@@ -13,7 +13,7 @@ export default function RootLayout({
     children: React.ReactNode
 }) {
     const pathname = usePathname();
-    const noNavbarPaths = ['/login', '/signup'];
+    const noNavbarPaths = ['/login', '/signup', '/dashboard'];
     const showNavbar = !noNavbarPaths.includes(pathname);
 
     return (
