@@ -2,6 +2,8 @@ import { getProductById } from '@/app/data/products'; // Adjust path if needed
 import { notFound } from 'next/navigation';
 import { CarouselDemo} from './Carousel';
 import { ProductInteractions } from './ProductInteractions';
+import { ProductReviews } from './ProductReview';
+
 
 export default async function ProductPage({params}: any) {
   
@@ -30,6 +32,9 @@ export default async function ProductPage({params}: any) {
         {/* Product Interactions */}
         <ProductInteractions product={product} />
       </div>
+    </div>
+    <div className="max-w-7xl mx-auto px-5 pb-12 -mt-15">
+    <ProductReviews />
     </div>
     </div>
   );
