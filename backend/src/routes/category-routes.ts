@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { z } from 'zod';
 
 import db from '../db/index.js';
 import { categories } from '../db/schema/categories.js';

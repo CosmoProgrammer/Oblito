@@ -17,6 +17,7 @@ import { checkRole } from '../middleware/role-middleware.js';
 
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { id } from 'zod/locales';
 
 
 const router = Router();
@@ -117,34 +118,49 @@ router.get('/products',  async (req, res) => {
 
 
         if (minPrice !== undefined) {
-            conditions.push(gte(products.price, minPrice.toString()));
+            conditions.push(gte(shopInventory.price, minPrice.toString()));
         }
         if (maxPrice !== undefined) {
-            conditions.push(lte(products.price, maxPrice.toString()));
+            conditions.push(lte(shopInventory.price, maxPrice.toString()));
         }
 
         let orderBy;
         const [sortField, sortOrder] = sort ? sort.split('_') : ['createdAt', 'desc'];
         const orderFunction = sortOrder === 'asc' ? asc : desc;
         if (sortField === 'price') {
-            orderBy = orderFunction(products.price);
+            orderBy = orderFunction(shopInventory.price);
         } else if (sortField === 'name') {
             orderBy = orderFunction(products.name);
+        } else if (sortField === 'createdAt') {
+            orderBy = orderFunction(products.createdAt);
         }
 
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-        let queryOne = db.select()
-                .from(products)
-                .where(whereClause)
-                .limit(limit)
-                .offset(offset);
+        let queryOne = db.select({
+                id: shopInventory.id,
+                name: products.name,
+                description: products.description,
+                price: shopInventory.price,
+                categoryId: products.categoryId,
+                imageURLs: products.imageURLs,
+                creatorId: products.creatorId,
+                createdAt: products.createdAt,
+                stockQuantity: shopInventory.stockQuantity,
+            })
+            .from(shopInventory)
+            .innerJoin(products, eq(shopInventory.productId, products.id))
+            .where(whereClause)
+            .limit(limit)
+            .offset(offset);
+
         if (orderBy) {
             queryOne.orderBy(orderBy);
         }
 
         let queryTwo = db.select({ count: sql<number>`count(*)` })
-                .from(products)
+                .from(shopInventory)
+                .innerJoin(products, eq(shopInventory.productId, products.id))
                 .where(whereClause);
 
 
@@ -176,15 +192,24 @@ router.get('/products',  async (req, res) => {
 
 router.get('/products/:id', async (req, res) => {
     try {
-        const { id: productId } = idParamSchema.parse(req.params);
-        const product = await db.query.products.findFirst({
-            where: eq(products.id, productId),
+        const { id: shopInventoryId } = idParamSchema.parse(req.params);
+        const listing = await db.query.shopInventory.findFirst({
+            where: eq(shopInventory.id, shopInventoryId),
+            with: {
+                product: true,
+                shop: {
+                    columns: {
+                        id: true,
+                        name: true,
+                    }
+                }
+            }
         });
 
-        if (!product) {
+        if (!listing) {
             return res.status(404).json({ message: 'Product not found' });
         }
-        res.json({ product });
+        res.json({ product: listing });
     } catch (e) {
         if (e instanceof z.ZodError) {
             return res.status(400).json({ errors: e.issues });
@@ -217,7 +242,6 @@ router.post('/products', protect, checkRole(['wholesaler', 'retailer']), async (
             const productInsert = await tx.insert(products).values({
                 name,
                 description,
-                price: price.toString(),
                 categoryId,
                 imageURLs: imageUrls,
                 creatorId: user.id,
@@ -240,6 +264,8 @@ router.post('/products', protect, checkRole(['wholesaler', 'retailer']), async (
                     shopId: shop.id,
                     productId: createdProduct.id,
                     stockQuantity: stockQuantity.toString(),
+                    price: price.toString(),
+                    isProxyItem: isProxyItem
                 });
             } else if (user.role === 'wholesaler'){
                 const warehouse = await tx.query.warehouses.findFirst({
@@ -253,6 +279,7 @@ router.post('/products', protect, checkRole(['wholesaler', 'retailer']), async (
                     warehouseId: warehouse.id,
                     productId: createdProduct.id,
                     stockQuantity: stockQuantity.toString(),
+                    price: price.toString(),
                 });
             }
             return createdProduct;

@@ -65,19 +65,22 @@ async function seed() {
     }
 
     const productIds: string[] = [];
+    const productPrices: number[] = [];
     for (let i = 1; i <= 10; i++) {
       const name = `Product ${i}`;
       const description = `Description for product ${i}`;
-      const price = (9.99 + i).toFixed(2);
+      // price is now stored on inventory records; keep a price mapping here
+      const price = parseFloat((9.99 + i).toFixed(2));
       const categoryId = categoryIds[i % categoryIds.length];
       const imageURLs = `{"https://example.com/img${i}.jpg"}`;
       const creatorId = userIds[(i - 1) % userIds.length];
       const r = await client.query(
-        `INSERT INTO products (name, description, price, category_id, image_urls, creator_id)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-        [name, description, price, categoryId, imageURLs, creatorId]
+        `INSERT INTO products (name, description, category_id, image_urls, creator_id)
+         VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+        [name, description, categoryId, imageURLs, creatorId]
       );
       productIds.push(r.rows[0].id);
+      productPrices.push(price);
     }
 
     const shopIds: string[] = [];
@@ -110,9 +113,10 @@ async function seed() {
       const warehouseId = warehouseIds[i];
       const productId = productIds[i];
       const qty = 100 + i * 10;
+      const price = productPrices[i];
       const r = await client.query(
-        `INSERT INTO warehouse_inventory (warehouse_id, product_id, stock_quantity) VALUES ($1,$2,$3) RETURNING id`,
-        [warehouseId, productId, qty]
+        `INSERT INTO warehouse_inventory (warehouse_id, product_id, stock_quantity, price) VALUES ($1,$2,$3,$4) RETURNING id`,
+        [warehouseId, productId, qty, price]
       );
       warehouseInventoryIds.push(r.rows[0].id);
     }
@@ -121,10 +125,11 @@ async function seed() {
       const shopId = shopIds[i];
       const productId = productIds[i];
       const qty = 10 + i * 5;
+      const price = productPrices[i];
       await client.query(
-        `INSERT INTO shop_inventory (shop_id, product_id, stock_quantity, is_proxy_item, warehouse_inventory_id)
-         VALUES ($1,$2,$3,$4,$5)`,
-        [shopId, productId, qty, false, warehouseInventoryIds[i]]
+        `INSERT INTO shop_inventory (shop_id, product_id, stock_quantity, is_proxy_item, warehouse_inventory_id, price)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [shopId, productId, qty, false, warehouseInventoryIds[i], price]
       );
     }
 
