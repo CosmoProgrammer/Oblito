@@ -167,13 +167,13 @@ export const createProduct = async (req: any, res: any) => {
             lastName: string, 
             role: 'customer' | 'retailer' | 'wholesaler' 
         };
-        const { name, description, price, categoryId, stockQuantity, imageUrls, isProxyItem } = createProductSchema.parse(req.body);
-        if (isProxyItem === true && user.role !== 'retailer') {
+        const { name, description, price, categoryId, stockQuantity, imageUrls } = createProductSchema.parse(req.body);
+        /*if (isProxyItem === true && user.role !== 'retailer') {
             return res.status(400).json({
                 message: "Invalid input",
                 errors: { isProxyItem: ["isProxyItem can only be set to true by retailers"] }
             });
-        }
+        }*/
         
         const newProduct = await db.transaction(async (tx) => {
             const productInsert = await tx.insert(products).values({
@@ -202,7 +202,8 @@ export const createProduct = async (req: any, res: any) => {
                     productId: createdProduct.id,
                     stockQuantity: stockQuantity.toString(),
                     price: price.toString(),
-                    isProxyItem: isProxyItem
+                    isProxyItem: false,
+                    warehouseInventoryId: null,
                 });
             } else if (user.role === 'wholesaler'){
                 const warehouse = await tx.query.warehouses.findFirst({
@@ -231,5 +232,128 @@ export const createProduct = async (req: any, res: any) => {
         console.error('Error fetching product by ID:', e);
         
         res.status(500).json({ message: e });
+    }
+};
+
+export const getAllWholesaleProducts = async (req: any, res: any) => {
+    try{
+        const {page, limit, sort, minPrice, maxPrice, categories: categoriesReq} = productQuerySchema.parse(req.query);
+        const offset = (page - 1) * limit;
+
+        const categoryIds = [];
+        for (let category of categoriesReq) {
+            const dbCategory = await db.query.categories.findFirst({
+                where: eq(categories.name, category)
+            });
+            if (dbCategory) {
+                categoryIds.push(dbCategory.id);
+            }
+        }
+
+        const conditions = []
+        if (categoryIds.length > 0) {
+            conditions.push(inArray(products.categoryId, categoryIds));
+        }
+
+
+        if (minPrice !== undefined) {
+            conditions.push(gte(warehouseInventory.price, minPrice.toString()));
+        }
+        if (maxPrice !== undefined) {
+            conditions.push(lte(warehouseInventory.price, maxPrice.toString()));
+        }
+
+        let orderBy;
+        const [sortField, sortOrder] = sort ? sort.split('_') : ['createdAt', 'desc'];
+        const orderFunction = sortOrder === 'asc' ? asc : desc;
+        if (sortField === 'price') {
+            orderBy = orderFunction(warehouseInventory.price);
+        } else if (sortField === 'name') {
+            orderBy = orderFunction(products.name);
+        } else if (sortField === 'createdAt') {
+            orderBy = orderFunction(products.createdAt);
+        }
+
+        const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+        let queryOne = db.select({
+                id: warehouseInventory.id,
+                name: products.name,
+                description: products.description,
+                price: warehouseInventory.price,
+                categoryId: products.categoryId,
+                imageURLs: products.imageURLs,
+                creatorId: products.creatorId,
+                createdAt: products.createdAt,
+                stockQuantity: warehouseInventory.stockQuantity,
+            })
+            .from(warehouseInventory)
+            .innerJoin(products, eq(warehouseInventory.productId, products.id))
+            .where(whereClause)
+            .limit(limit)
+            .offset(offset);
+
+        if (orderBy) {
+            queryOne.orderBy(orderBy);
+        }
+
+        let queryTwo = db.select({ count: sql<number>`count(*)` })
+                .from(warehouseInventory)
+                .innerJoin(products, eq(warehouseInventory.productId, products.id))
+                .where(whereClause);
+
+
+        const [productsList, totalCount] = await Promise.all([
+            queryOne,
+            queryTwo
+        ]);
+
+        const totalPages = Math.ceil((totalCount[0]?.count || 0) / limit);
+        
+
+        res.json({
+            products: productsList,
+            pagination: {
+                totalCount: totalCount[0]?.count || 0,
+                totalPages,
+                currentPage: page,
+                limit
+            }
+        });
+    } catch (e) {
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error fetching products:', e);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+export const getWarehouseProductById = async (req: any, res: any) => {
+    try {
+        const { id: warehouseInventoryId } = idParamSchema.parse(req.params);
+        const listing = await db.query.warehouseInventory.findFirst({
+            where: eq(warehouseInventory.id, warehouseInventoryId),
+            with: {
+                product: true,
+                warehouse: {
+                    columns: {
+                        id: true,
+                        name: true,
+                    }
+                }
+            }
+        });
+
+        if (!listing) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+        res.json({ product: listing });
+    } catch (e) {
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error fetching product by ID:', e);
+        res.status(500).json({ message: 'Internal server error' });
     }
 };

@@ -35,5 +35,5 @@ export const createProductSchema = z.object({
     categoryId: z.string().optional(),
     stockQuantity: z.coerce.number().int().min(0, "Stock must be 0 or more"),
     imageUrls: z.array(z.url("Must be a valid URL")).default([]),
-    isProxyItem: z.boolean().optional().default(false)
+    //isProxyItem: z.boolean().optional().default(false)
 });
