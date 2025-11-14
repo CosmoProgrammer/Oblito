@@ -5,4 +5,5 @@ export interface ProductProps {
   price: number;
   imageUrl: string;
   rating : number;
+  category: string;
 }
