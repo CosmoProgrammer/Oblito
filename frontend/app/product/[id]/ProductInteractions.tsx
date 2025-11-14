@@ -7,8 +7,8 @@ import { useCart } from '@/app/cart/cart_util';
 // Define the shape of the props this component will receive
 type ProductInteractionsProps = {
   product: {
-    price: number;
-    rating: number;
+    price: string;
+    // rating: number;
     description: string;
     id: string;
   };
@@ -17,7 +17,7 @@ type ProductInteractionsProps = {
 export function ProductInteractions({ product }: ProductInteractionsProps) {
   // All client-side interactive logic lives here
   const [quantity, setQuantity] = useState(1);
-  const { addItemToCart, addedMsg } = useCart();
+  const { addItemToCart, addedMsg, isLoading } = useCart();
   
 
   function increaseQuantity() {
@@ -37,12 +37,12 @@ export function ProductInteractions({ product }: ProductInteractionsProps) {
     // We start from Price, as Title/Category are in the server page
     <>
       {/* Price */}
-      <div className="flex items-center gap-4">
-        <span className="text-4xl font-bold text-gray-900">${product.price.toFixed(2)}</span>
-      </div>
+      {/* <div className="flex items-center gap-4">
+        <span className="text-4xl font-bold text-gray-900">${product.price}</span>
+      </div> */}
 
       {/* Ratings */}
-      <div className="flex items-center gap-2">
+      {/* <div className="flex items-center gap-2">
         {[...Array(5)].map((_, i) => (
           <Star
             key={i}
@@ -50,7 +50,7 @@ export function ProductInteractions({ product }: ProductInteractionsProps) {
           />
         ))}
         <span className="text-gray-600 text-sm">{product.rating.toFixed(1)} • 122 reviews</span>
-      </div>
+      </div> */}
 
       {/* Quantity Selector */}
       <div>
@@ -65,11 +65,12 @@ export function ProductInteractions({ product }: ProductInteractionsProps) {
       {/* Add to Cart Button */}
       <button 
         onClick={addToCartHandler}
-        className="w-full sm:w-auto bg-[#febd69] hover:bg-[#f5a623] text-black font-medium py-3 px-10 rounded-lg transition-colors">
-        Add to Cart
+        disabled={isLoading}
+        className="w-full sm:w-auto bg-[#febd69] hover:bg-[#f5a623] disabled:bg-gray-400 text-black font-medium py-3 px-10 rounded-lg transition-colors">
+        {isLoading ? 'Adding...' : 'Add to Cart'}
       </button>
       {addedMsg && (
-        <p className="text-green-600 font-medium mt-3 transition-opacity duration-300">
+        <p className={`font-medium mt-3 transition-opacity duration-300 ${addedMsg.includes('Failed') ? 'text-red-600' : 'text-green-600'}`}>
           {addedMsg}
         </p>)}
 

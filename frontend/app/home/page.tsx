@@ -2,10 +2,22 @@
 
 import ProductCard from "@/components/ProductCard";
 import { use, useEffect, useState,useMemo } from "react";
-import {  allProducts} from "../data/products";
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: string; // This is a string, like "12.99"
+  stockQuantity: string; // This is also a string
+  imageURLs: string[]; // This is an array of strings
+  categoryId: string;
+  creatorId: string;
+  createdAt: string;
+}
 
 export default function HomePage() {
     const [user, setUser] = useState<string | null>(null);
+    const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -25,7 +37,25 @@ export default function HomePage() {
                 setLoading(false);
             }
         }
+        async function fetchProducts() {
+            try {
+                const res = await fetch(`http://localhost:8000/products`, {
+                    credentials: 'include',
+                    method: 'GET',
+                });
+                if(res.ok){
+                    const data = await res.json();
+                    setProducts(data.products);
+                    console.log(data);
+                }
+            } catch (err) {
+                console.error('Error fetching products:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
         fetchUser();
+        fetchProducts();
     }, []);
 
     return (
@@ -41,7 +71,7 @@ export default function HomePage() {
 
 
          <div className="grid grid-cols-4 gap-[24px] justify-items-center p-[20px]">
-                 {allProducts.map((product) => (
+                 {products.map((product) => (
                    <ProductCard key={product.id} product={product} />
                  ))}
                </div>

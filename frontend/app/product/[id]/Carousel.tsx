@@ -11,7 +11,11 @@ import {
   type CarouselApi,
 } from '@/components/ui/carousel';
 
-const productImages = [
+type CarouselDemoProps = {
+  imageURLs?: string[];
+};
+
+const defaultImages = [
   { src: "https://placehold.co/600x400/232f3e/ffffff?text=Product+1", alt: "Product 1" },
   { src: "https://placehold.co/600x400/ffffff/000000?text=Product+2", alt: "Product 2" },
   { src: "https://placehold.co/600x400/00aae4/ffffff?text=Product+3", alt: "Product 3" },
@@ -19,8 +23,13 @@ const productImages = [
   { src: "https://placehold.co/600x400/0a3d62/ffffff?text=Product+5", alt: "Product 5" },
 ];
 
-export function CarouselDemo() {
+export function CarouselDemo({ imageURLs }: CarouselDemoProps) {
   const [mainApi, setMainApi] = useState<CarouselApi | null>(null);
+
+  // Use provided imageURLs or fall back to defaults
+  const productImages = (imageURLs && imageURLs.length > 0)
+    ? imageURLs.map((url, index) => ({ src: url, alt: `Product ${index+1}` }))
+    : defaultImages;
 
   return (
     <div className="flex justify-start items-start gap-16">

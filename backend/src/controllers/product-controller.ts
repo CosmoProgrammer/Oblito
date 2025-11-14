@@ -129,6 +129,7 @@ export const getAllProducts = async (req: any, res: any) => {
 
 export const getProductById = async (req: any, res: any) => {
     try {
+        console.log('Received get product by ID request with params:', req.params);
         const { id: shopInventoryId } = idParamSchema.parse(req.params);
         const listing = await db.query.shopInventory.findFirst({
             where: eq(shopInventory.id, shopInventoryId),
@@ -146,7 +147,20 @@ export const getProductById = async (req: any, res: any) => {
         if (!listing) {
             return res.status(404).json({ message: 'Product not found' });
         }
-        res.json({ product: listing });
+        res.json({ 
+            product: {
+                id: req.params.id,
+                name: listing.product.name,
+                description: listing.product.description,
+                categoryId: listing.product.categoryId,
+                imageURLs: listing.product.imageURLs,
+                price: listing.price,
+                stockQuantity: listing.stockQuantity,
+                shopId: listing.shopId,
+                shopName: listing.shop.name,
+                createdAt: listing.product.createdAt,
+            }
+        });
     } catch (e) {
         if (e instanceof z.ZodError) {
             return res.status(400).json({ errors: e.issues });

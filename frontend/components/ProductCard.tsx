@@ -9,7 +9,7 @@ interface ProductCardProps {
 
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const { name, description, price, imageUrl, rating, id } = product;
+  const { name, description, price, imageURLs, id } = product;
   const { addItemToCart,addedMsg } = useCart();
 
   function addToCartHandler(productId: string) {
@@ -22,7 +22,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       <article className="bg-[#ebe6e6] w-[300px] max-w-[320px] rounded-[18px] shadow-lg overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col h-full text-center">
         
         <img
-          src={imageUrl}
+          src={imageURLs[0]}
           alt={name}
           className="w-full h-[150px] object-cover flex-shrink-0"
         />
@@ -36,10 +36,10 @@ export default function ProductCard({ product }: ProductCardProps) {
             {description}
           </p>
 
-          <p className="text-yellow-500 font-medium mb-1">Rating: {rating}</p>
+          {/* <p className="text-yellow-500 font-medium mb-1">Rating: {rating}</p> */}
 
           <p className="text-2xl font-extrabold text-[#111] mb-4">
-            ${price.toFixed(2)}
+            ${price}
           </p>
         </div>
 

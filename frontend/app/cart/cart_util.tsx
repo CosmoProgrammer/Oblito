@@ -1,67 +1,91 @@
-"use client"; // Custom hooks that use state must be client-side
+"use client";
 import { useState } from 'react';
 
-// Define a type for a cart item for better type safety
+const API_BASE_URL = "http://localhost:8000";
+
 type CartItem = {
-  id: string;
+  cartItemId: string;
   quantity: number;
+  productId: string;
 };
 
-// This key can be exported if other parts of the app need it (like a cart page)
-export const CART_KEY = "oblito_cart";
-
 /**
- * This is the pure, non-React logic for updating localStorage.
- * It's kept separate so it's not tied to React.
+ * This is the pure, async logic for updating the cart via API.
  */
-function updateCartInStorage(productId: string, quantity: number) {
+async function addItemToCartAPI(productId: string, quantity: number) {
   if (!productId || quantity <= 0) {
     console.error("Invalid product ID or quantity");
     return;
   }
 
-  // Get the current cart from localStorage
-  const raw = localStorage.getItem(CART_KEY);
-  const current: CartItem[] = raw ? JSON.parse(raw) : [];
+  try {
+    const payload = {
+      shopInventoryId: productId,
+      quantity,
+    };
 
-  // Find if the item already exists in the cart
-  const existing = current.find(item => item.id === productId);
+    console.log("Sending to POST /cart:", JSON.stringify(payload, null, 2));
 
-  if (existing) {
-    // Update quantity, ensuring it doesn't exceed a max limit (e.g., 999)
-    existing.quantity = Math.min(999, existing.quantity + quantity);
-  } else {
-    // Add the new item to the cart
-    current.push({ id: productId, quantity });
+    const res = await fetch(`${API_BASE_URL}/cart`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    
+    const data = await res.json();
+    
+    console.log("Backend response:", res.status, data);
+    
+    if (!res.ok) {
+      // Handle 401 Unauthorized specifically
+      if (res.status === 401) {
+        throw new Error("You must be logged in to add items to cart");
+      }
+      
+      // Extract error message from errors array or message field
+      let errorMsg = `Server error: ${res.status}`;
+      if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+        errorMsg = data.errors[0].message || data.errors[0];
+        console.log("Extracted error message:", errorMsg);
+      } else if (data.message) {
+        errorMsg = data.message;
+      }
+      console.error("Backend error details:", data);
+      throw new Error(errorMsg);
+    }
+    
+    return data;
+  } catch (err) {
+    console.error("Error adding to cart:", err);
+    throw err;
   }
-
-  // Save the updated cart back to localStorage
-  localStorage.setItem(CART_KEY, JSON.stringify(current));
 }
 
-
-// --- This is the new custom hook ---
-// It wraps the cart logic and adds React state (the message)
+// --- Custom hook for adding to cart ---
 export function useCart() {
-  // State for the message lives INSIDE the hook
   const [addedMsg, setAddedMsg] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  /**
-   * This is the function your component will call.
-   * It calls the storage logic AND sets the message state.
-   */
-  const addItemToCart = (productId: string, quantity: number) => {
-    // 1. Call the pure logic to update the cart
-    updateCartInStorage(productId, quantity);
-
-    // 2. Set the local state to show a message
-    setAddedMsg(`Added ${quantity} item(s) to cart!`);
-
-    // 3. Clear the message after 3 seconds
-    setTimeout(() => setAddedMsg(null), 3000);
+  const addItemToCart = async (productId: string, quantity: number) => {
+    console.log("addItemToCart called with:", { productId, quantity });
+    setIsLoading(true);
+    try {
+      await addItemToCartAPI(productId, quantity);
+      setAddedMsg(`Added ${quantity} item(s) to cart!`);
+      setTimeout(() => setAddedMsg(null), 3000);
+    } catch (err: any) {
+      const errorMsg = err.message || "Failed to add item to cart";
+      setAddedMsg(errorMsg);
+      console.error("Cart error details:", errorMsg);
+      setTimeout(() => setAddedMsg(null), 5000); // Show error longer
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Return the message (so the component can display it)
-  // and the function (so the component can call it)
-  return { addedMsg, addItemToCart };
+  return { addedMsg, addItemToCart, isLoading };
 }
