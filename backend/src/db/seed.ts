@@ -17,7 +17,7 @@ async function seed() {
   try {
     console.log('Seeding database...');
 
-    await client.query(`TRUNCATE TABLE shop_inventory, warehouse_inventory, shops, warehouses, products, categories, addresses, users CASCADE;`);
+  await client.query(`TRUNCATE TABLE cart_items, carts, shop_inventory, warehouse_inventory, shops, warehouses, products, categories, addresses, users CASCADE;`);
 
     const users = [
       { email: 'alice@example.com', password_hash: 'hash_alice', first_name: 'Alice', last_name: 'Anderson', role: 'customer' },
@@ -121,16 +121,39 @@ async function seed() {
       warehouseInventoryIds.push(r.rows[0].id);
     }
 
+    const shopInventoryIds: string[] = [];
     for (let i = 0; i < 3; i++) {
       const shopId = shopIds[i];
       const productId = productIds[i];
       const qty = 10 + i * 5;
       const price = productPrices[i];
-      await client.query(
+      const r = await client.query(
         `INSERT INTO shop_inventory (shop_id, product_id, stock_quantity, is_proxy_item, warehouse_inventory_id, price)
-         VALUES ($1,$2,$3,$4,$5,$6)`,
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
         [shopId, productId, qty, false, warehouseInventoryIds[i], price]
       );
+      shopInventoryIds.push(r.rows[0].id);
+    }
+
+    // Create carts for users and add a couple of cart items per cart
+    const cartIds: string[] = [];
+    for (let i = 0; i < userIds.length; i++) {
+      const customerId = userIds[i];
+      const r = await client.query(`INSERT INTO carts (customer_id) VALUES ($1) RETURNING id`, [customerId]);
+      cartIds.push(r.rows[0].id);
+    }
+
+    // Add 1-2 items per cart, cycling available shop inventory rows
+    for (let i = 0; i < cartIds.length; i++) {
+      const cartId = cartIds[i];
+      // add first item
+      const si1 = shopInventoryIds[i % shopInventoryIds.length];
+      await client.query(`INSERT INTO cart_items (cart_id, shop_inventory_id, quantity) VALUES ($1,$2,$3)`, [cartId, si1, 1]);
+      // optionally add a second item for carts beyond the first
+      if (shopInventoryIds.length > 1) {
+        const si2 = shopInventoryIds[(i + 1) % shopInventoryIds.length];
+        await client.query(`INSERT INTO cart_items (cart_id, shop_inventory_id, quantity) VALUES ($1,$2,$3)`, [cartId, si2, 2]);
+      }
     }
 
     console.log('Database seeded successfully!');
