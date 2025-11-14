@@ -17,7 +17,7 @@ async function seed() {
   try {
     console.log('Seeding database...');
 
-    await client.query(`TRUNCATE TABLE shop_inventory, warehouse_inventory, shops, warehouses, products, categories, addresses, users CASCADE;`);
+  await client.query(`TRUNCATE TABLE cart_items, carts, shop_inventory, warehouse_inventory, shops, warehouses, products, categories, addresses, users CASCADE;`);
 
     const users = [
       { email: 'alice@example.com', password_hash: 'hash_alice', first_name: 'Alice', last_name: 'Anderson', role: 'customer' },
@@ -65,19 +65,22 @@ async function seed() {
     }
 
     const productIds: string[] = [];
+    const productPrices: number[] = [];
     for (let i = 1; i <= 10; i++) {
       const name = `Product ${i}`;
       const description = `Description for product ${i}`;
-      const price = (9.99 + i).toFixed(2);
+      // price is now stored on inventory records; keep a price mapping here
+      const price = parseFloat((9.99 + i).toFixed(2));
       const categoryId = categoryIds[i % categoryIds.length];
       const imageURLs = `{"https://example.com/img${i}.jpg"}`;
       const creatorId = userIds[(i - 1) % userIds.length];
       const r = await client.query(
-        `INSERT INTO products (name, description, price, category_id, image_urls, creator_id)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-        [name, description, price, categoryId, imageURLs, creatorId]
+        `INSERT INTO products (name, description, category_id, image_urls, creator_id)
+         VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+        [name, description, categoryId, imageURLs, creatorId]
       );
       productIds.push(r.rows[0].id);
+      productPrices.push(price);
     }
 
     const shopIds: string[] = [];
@@ -110,22 +113,47 @@ async function seed() {
       const warehouseId = warehouseIds[i];
       const productId = productIds[i];
       const qty = 100 + i * 10;
+      const price = productPrices[i];
       const r = await client.query(
-        `INSERT INTO warehouse_inventory (warehouse_id, product_id, stock_quantity) VALUES ($1,$2,$3) RETURNING id`,
-        [warehouseId, productId, qty]
+        `INSERT INTO warehouse_inventory (warehouse_id, product_id, stock_quantity, price) VALUES ($1,$2,$3,$4) RETURNING id`,
+        [warehouseId, productId, qty, price]
       );
       warehouseInventoryIds.push(r.rows[0].id);
     }
 
+    const shopInventoryIds: string[] = [];
     for (let i = 0; i < 3; i++) {
       const shopId = shopIds[i];
       const productId = productIds[i];
       const qty = 10 + i * 5;
-      await client.query(
-        `INSERT INTO shop_inventory (shop_id, product_id, stock_quantity, is_proxy_item, warehouse_inventory_id)
-         VALUES ($1,$2,$3,$4,$5)`,
-        [shopId, productId, qty, false, warehouseInventoryIds[i]]
+      const price = productPrices[i];
+      const r = await client.query(
+        `INSERT INTO shop_inventory (shop_id, product_id, stock_quantity, is_proxy_item, warehouse_inventory_id, price)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+        [shopId, productId, qty, false, warehouseInventoryIds[i], price]
       );
+      shopInventoryIds.push(r.rows[0].id);
+    }
+
+    // Create carts for users and add a couple of cart items per cart
+    const cartIds: string[] = [];
+    for (let i = 0; i < userIds.length; i++) {
+      const customerId = userIds[i];
+      const r = await client.query(`INSERT INTO carts (customer_id) VALUES ($1) RETURNING id`, [customerId]);
+      cartIds.push(r.rows[0].id);
+    }
+
+    // Add 1-2 items per cart, cycling available shop inventory rows
+    for (let i = 0; i < cartIds.length; i++) {
+      const cartId = cartIds[i];
+      // add first item
+      const si1 = shopInventoryIds[i % shopInventoryIds.length];
+      await client.query(`INSERT INTO cart_items (cart_id, shop_inventory_id, quantity) VALUES ($1,$2,$3)`, [cartId, si1, 1]);
+      // optionally add a second item for carts beyond the first
+      if (shopInventoryIds.length > 1) {
+        const si2 = shopInventoryIds[(i + 1) % shopInventoryIds.length];
+        await client.query(`INSERT INTO cart_items (cart_id, shop_inventory_id, quantity) VALUES ($1,$2,$3)`, [cartId, si2, 2]);
+      }
     }
 
     console.log('Database seeded successfully!');
