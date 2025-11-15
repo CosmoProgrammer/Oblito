@@ -4,6 +4,7 @@ import { ProductInteractions } from './ProductInteractions';
 import { ProductReviews } from './ProductReview';
 import { useEffect, useState } from 'react';
 import { use } from 'react';
+import { getCategoryName } from '@/app/utils/categoryMap';
 
 type Product = {
   id: string;
@@ -17,6 +18,7 @@ type Product = {
 export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [product, setProduct] = useState<Product | null>(null);
+  const [categoryName, setCategoryName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,12 +33,14 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         console.log("Full backend response:", data);
         
         if (res.ok) {
-          // Handle different possible response structures
           const productData = data.product;
           console.log("Extracted product data:", productData);
           
           if (productData && productData.id) {
             setProduct(productData);
+            // Get category name from the utility
+            const name = getCategoryName(productData.categoryId);
+            setCategoryName(name);
           } else {
             setError("Invalid product data received");
           }
@@ -74,11 +78,11 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         <div className="flex flex-col justify-start space-y-8 lg:col-span-5">
           <div>
             <h1 className="text-4xl font-semibold text-gray-900">{product.name}</h1>
-            <p className="text-sm text-gray-500 mt-1">{product.categoryId}</p>
+            <p className="text-sm text-gray-500 mt-1">{categoryName || 'Loading category...'}</p>
           </div>
           <div className="flex items-center gap-4">
-        <span className="text-4xl font-bold text-gray-900">${product.price}</span>
-      </div>
+            <span className="text-4xl font-bold text-gray-900">${product.price}</span>
+          </div>
           <ProductInteractions product={product} />
         </div>
       </div>

@@ -17,7 +17,7 @@ async function seed() {
   try {
     console.log('Seeding database...');
 
-  await client.query(`TRUNCATE TABLE cart_items, carts, shop_inventory, warehouse_inventory, shops, warehouses, products, categories, addresses, users CASCADE;`);
+    await client.query(`TRUNCATE TABLE cart_items, carts, shop_inventory, warehouse_inventory, shops, warehouses, products, categories, addresses, users CASCADE;`);
 
     const users = [
       { email: 'alice@example.com', password_hash: 'hash_alice', first_name: 'Alice', last_name: 'Anderson', role: 'customer' },
@@ -57,6 +57,8 @@ async function seed() {
       { name: 'Electronics', description: 'Electronic items' },
       { name: 'Clothing', description: 'Apparel and garments' },
       { name: 'Home', description: 'Home and kitchen' },
+      { name: 'Sports', description: 'Sports and outdoor equipment' },
+      { name: 'Books', description: 'Books and media' },
     ];
     const categoryIds: string[] = [];
     for (const c of categories) {
@@ -66,13 +68,12 @@ async function seed() {
 
     const productIds: string[] = [];
     const productPrices: number[] = [];
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= 15; i++) {
       const name = `Product ${i}`;
       const description = `Description for product ${i}`;
-      // price is now stored on inventory records; keep a price mapping here
-      const price = parseFloat((9.99 + i).toFixed(2));
+      const price = parseFloat((9.99 + i * 2).toFixed(2));
       const categoryId = categoryIds[i % categoryIds.length];
-      const imageURLs = `{"https://example.com/img${i}.jpg"}`;
+      const imageURLs = `{"https://placehold.co/600x400?text=Product+${i}", "https://placehold.co/600x400?text=Product+${i}+Alt2"}`;
       const creatorId = userIds[(i - 1) % userIds.length];
       const r = await client.query(
         `INSERT INTO products (name, description, category_id, image_urls, creator_id)
@@ -109,8 +110,8 @@ async function seed() {
     }
 
     const warehouseInventoryIds: string[] = [];
-    for (let i = 0; i < 3; i++) {
-      const warehouseId = warehouseIds[i];
+    for (let i = 0; i < 15; i++) {
+      const warehouseId = warehouseIds[i % warehouseIds.length];
       const productId = productIds[i];
       const qty = 100 + i * 10;
       const price = productPrices[i];
@@ -122,8 +123,8 @@ async function seed() {
     }
 
     const shopInventoryIds: string[] = [];
-    for (let i = 0; i < 3; i++) {
-      const shopId = shopIds[i];
+    for (let i = 0; i < 15; i++) {
+      const shopId = shopIds[i % shopIds.length];
       const productId = productIds[i];
       const qty = 10 + i * 5;
       const price = productPrices[i];
@@ -149,7 +150,7 @@ async function seed() {
       // add first item
       const si1 = shopInventoryIds[i % shopInventoryIds.length];
       await client.query(`INSERT INTO cart_items (cart_id, shop_inventory_id, quantity) VALUES ($1,$2,$3)`, [cartId, si1, 1]);
-      // optionally add a second item for carts beyond the first
+      // add a second item
       if (shopInventoryIds.length > 1) {
         const si2 = shopInventoryIds[(i + 1) % shopInventoryIds.length];
         await client.query(`INSERT INTO cart_items (cart_id, shop_inventory_id, quantity) VALUES ($1,$2,$3)`, [cartId, si2, 2]);

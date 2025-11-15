@@ -184,18 +184,18 @@ export default function CartPage() {
                       <div className="text-sm">Subtotal</div>
                       <div className="font-semibold">${(Number(item.price) * Number(item.quantity)).toFixed(2)}</div>
                     </div>
-
                     <Button
                       variant="destructive"
                       size="sm"
                       onClick={() => removeItem(item.cartItemId)}
                       aria-label={`Remove ${item.name}`}
                       disabled={loading}
+                      
                     >
                       Remove
                     </Button>
+                    </div>
                   </div>
-                </div>
               ))}
 
               <div className="flex justify-between items-center pt-4">

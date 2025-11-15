@@ -66,7 +66,7 @@ export function ProductInteractions({ product }: ProductInteractionsProps) {
       <button 
         onClick={addToCartHandler}
         disabled={isLoading}
-        className="w-full sm:w-auto bg-[#febd69] hover:bg-[#f5a623] disabled:bg-gray-400 text-black font-medium py-3 px-10 rounded-lg transition-colors">
+        className="w-full sm:w-auto bg-[#febd69] hover:bg-[#f5a623] disabled:bg-gray-400 text-black font-medium py-3 px-10 rounded-lg transition-colors cursor-pointer">
         {isLoading ? 'Adding...' : 'Add to Cart'}
       </button>
       {addedMsg && (
