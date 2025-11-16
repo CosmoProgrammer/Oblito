@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { warehouseInventory } from "../db/schema/warehouseInventory.js";
 
 export const createListingSchema = z.object({
     warehouseInventoryId: z.uuid("Invalid warehouse inventory ID"),

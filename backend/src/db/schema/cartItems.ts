@@ -1,4 +1,5 @@
 import { pgTable, uuid, numeric, unique } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 import { carts } from './carts.js';
 import { shopInventory } from './shopInventory.js';
 
@@ -13,6 +14,18 @@ export const cartItems = pgTable('cart_items', {
     };
 });
 
+export const cartItemsRelations = relations(cartItems, ({ one }) => ({
+    cart: one(carts, {
+        fields: [cartItems.cartId],
+        references: [carts.id],
+    }),
+    shopInventory: one(shopInventory, {
+        fields: [cartItems.shopInventoryId],
+        references: [shopInventory.id],
+    }),
+}));
+
 export const cartItemsSchema = {
     cartItems,
+    cartItemsRelations,
 };

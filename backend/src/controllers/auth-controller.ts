@@ -112,6 +112,8 @@ export const handleSignUp = async (req: any, res: any) => {
 export const handleLogin = async (req: any, res: any) => {
     try {
         const { email, password } = loginSchema.parse(req.body);
+        console.log("Login attempt for email:", email);
+        console.log("Password provided:", password );
 
         const dbUser = await db.query.users.findFirst({
             where: eq(users.email, email),
@@ -122,6 +124,7 @@ export const handleLogin = async (req: any, res: any) => {
         }
 
         const isMatch = await bcrypt.compare(password, dbUser.passwordHash);
+        console.log("Password match result:", isMatch);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
