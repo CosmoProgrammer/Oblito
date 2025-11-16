@@ -15,7 +15,7 @@ import {
 
 interface Product {
   id: string;
-  name: string;
+  name:string;
   description: string;
   price: string; // This is a string, like "12.99"
   stockQuantity: string; // This is also a string
@@ -43,6 +43,7 @@ export default function HomePage() {
     limit: 12,
   });
   const [loading, setLoading] = useState(true);
+  const [showWelcomeMessage, setShowWelcomeMessage] = useState(true);
 
   useEffect(() => {
     async function fetchUser() {
@@ -84,6 +85,12 @@ export default function HomePage() {
     fetchUser();
     fetchProducts(1);
     fetchCategories();
+
+    const timer = setTimeout(() => {
+      setShowWelcomeMessage(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
   }, []);
 
   async function fetchProducts(page: number = 1) {
@@ -212,13 +219,17 @@ export default function HomePage() {
 
   return (
     <div className="max-w-[1500px] mx-auto p-[20px] grow bg-[#FFE4C4] w-full">
-      <h1>Home</h1>
-      {loading && !products.length ? (
-        <p>Loading...</p>
-      ) : user ? (
-        <p>Welcome, {user}!</p>
-      ) : (
-        <p>You are not logged in.</p>
+      {showWelcomeMessage && (
+        <>
+          <h1>Home</h1>
+          {loading && !products.length ? (
+            <p>Loading...</p>
+          ) : user ? (
+            <p>Welcome, {user}!</p>
+          ) : (
+            <p>You are not logged in.</p>
+          )}
+        </>
       )}
 
       <div className="grid grid-cols-4 gap-[24px] justify-items-center p-[20px]">
