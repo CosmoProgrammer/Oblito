@@ -1,4 +1,6 @@
 import { pgTable, text, uuid, pgEnum, numeric, timestamp } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+import { orderItems } from './orderItems.js';
 import { users } from './users.js';
 import { shops } from './shops.js';
 import { addresses } from './addresses.js';
@@ -25,10 +27,19 @@ export const orders = pgTable('orders', {
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).defaultNow(),
 });
 
+export const ordersRelations = relations(orders, ({ one, many }) => ({
+    shop: one(shops, {
+        fields: [orders.shopId],
+        references: [shops.id],
+    }),
+    orderItems: many(orderItems),
+}));
+
 export const ordersSchema = {
     orders,
     orderTypeEnum,
     fullOrderStatusEnum,
     paymentMethodEnum,
     paymentStatusEnum,
+    ordersRelations,
 };

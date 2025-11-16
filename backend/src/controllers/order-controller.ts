@@ -118,3 +118,45 @@ export const handlePostOrder = async (req: any, res: any) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
+
+export const handleGetOrders = async (req: any, res: any) => {
+    try {
+        const user = req.user as { 
+            id: string, 
+            email: string, 
+            profilePictureUrl: string | null, 
+            firstName: string, 
+            lastName: string, 
+            role: 'customer' | 'retailer' | 'wholesaler' 
+        };
+
+        const myOrders = await db.query.orders.findMany({
+            where: eq(orders.customerId, user.id),
+            orderBy: (orders, { desc }) => [desc(orders.createdAt)],
+            with: {
+                shop: { columns: { name: true } },
+                orderItems: {
+                    with: {
+                        shopInventory: {
+                            with: {
+                                product: {
+                                    columns: { name: true, imageURLs: true }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        console.log('Fetched orders:', myOrders);
+
+        res.json({ orders: myOrders });
+    } catch (e) {
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error posting order:', e);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}

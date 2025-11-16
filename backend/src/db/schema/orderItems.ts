@@ -1,4 +1,5 @@
 import { pgTable, text, uuid, numeric, pgEnum } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 import { orders } from './orders.js';
 import { shopInventory } from './shopInventory.js';
 import { warehouseInventory } from './warehouseInventory.js';
@@ -15,6 +16,18 @@ export const orderItems = pgTable('order_items', {
     status: orderStatusEnum('status').notNull().default('pending'),
 });
 
+export const orderItemsRelations = relations(orderItems, ({ one }) => ({
+    order: one(orders, {
+        fields: [orderItems.orderId],
+        references: [orders.id],
+    }),
+    shopInventory: one(shopInventory, {
+        fields: [orderItems.shopInventoryId],
+        references: [shopInventory.id],
+    }),
+}));
+
 export const orderItemsSchema = {
     orderItems,
+    orderItemsRelations,
 };
