@@ -156,7 +156,65 @@ export const handleGetOrders = async (req: any, res: any) => {
         if (e instanceof z.ZodError) {
             return res.status(400).json({ errors: e.issues });
         }
-        console.error('Error posting order:', e);
+        console.error('Error getting orders:', e);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+export const handleDeleteOrder = async (req: any, res: any) => {
+    try {
+        const user = req.user as { 
+            id: string, 
+            email: string, 
+            profilePictureUrl: string | null, 
+            firstName: string, 
+            lastName: string, 
+            role: 'customer' | 'retailer' | 'wholesaler' 
+        };
+        const { orderId } = orderIdParamSchema.parse({orderId: req.params.id});
+
+        console.log('Attempting to cancel order:', orderId, 'for user:', user.id);
+
+        const order = await db.query.orders.findFirst({
+            where: and(eq(orders.id, orderId), eq(orders.customerId, user.id)),
+            with: {
+                orderItems: true
+            }
+        });
+
+        if (!order) return res.status(404).json({ message: "Order not found" });
+
+        if (order.status === 'delivered' || order.status === 'cancelled') {
+            return res.status(400).json({ message: `Cannot cancel order with status: ${order.status}` });
+        }
+
+        await db.transaction(async (tx) => {
+            await tx.update(orders)
+                .set({ status: 'cancelled' })
+                .where(eq(orders.id, orderId));
+            
+            await tx.update(orderItems)
+                .set({ status: 'cancelled' })
+                .where(eq(orderItems.orderId, orderId));
+
+            for (const item of order.orderItems) {
+                if (item.shopInventoryId) {
+                    await tx.update(shopInventory)
+                        .set({ 
+                            stockQuantity: sql`${shopInventory.stockQuantity} + ${item.quantity}` 
+                        })
+                        .where(eq(shopInventory.id, item.shopInventoryId));
+                }
+            }
+        });
+
+        res.json({ message: "Order cancelled successfully" });
+    } catch (e) {
+        console.log('Error in deleting order:', e);
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error deleting order:', e);
         res.status(500).json({ message: 'Internal server error' });
     }
 }
