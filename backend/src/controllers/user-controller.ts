@@ -1,4 +1,4 @@
-import { email, z } from 'zod';
+import { z } from 'zod';
 
 import db from '../db/index.js';
 import { users } from '../db/schema/users.js';
@@ -8,7 +8,7 @@ import { warehouses } from '../db/schema/warehouses.js';
 
 import { eq, and, ne } from 'drizzle-orm';
 
-import { updateProfileSchema, addressSchema, entitySettingsSchema, uploadQuerySchema } from '../validation/user-validation.js';
+import { updateProfileSchema, entitySettingsSchema, uploadQuerySchema } from '../validation/user-validation.js';
 import { getS3UploadUrlForProfile } from '../services/s3-service.js';
 
 export const handleGetMe = async (req: any, res: any) => {
