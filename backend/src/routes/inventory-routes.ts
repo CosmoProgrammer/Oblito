@@ -9,6 +9,6 @@ const router = Router();
 
 router.get('/inventory', protect, checkRole(['retailer', 'wholesaler']), handleGetInventory);
 
-router.post('/inventory/listings', protect, checkRole(['retailer']), handleCreateRetailListing);
+//router.post('/inventory/listings', protect, checkRole(['retailer']), handleCreateRetailListing);
 
 export default router;

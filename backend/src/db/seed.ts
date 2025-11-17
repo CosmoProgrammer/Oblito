@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
+import bcrypt from 'bcrypt';
 
 dotenv.config();
 
@@ -18,11 +19,16 @@ async function seed() {
     console.log('Seeding database...');
 
     await client.query(`TRUNCATE TABLE cart_items, carts, shop_inventory, warehouse_inventory, shops, warehouses, products, categories, addresses, users CASCADE;`);
-
+    const hashPassword = async (password: string) => {
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(password, salt);
+      return passwordHash;
+    }
+    
     const users = [
-      { email: 'alice@example.com', password_hash: 'hash_alice', first_name: 'Alice', last_name: 'Anderson', role: 'customer' },
-      { email: 'bob@example.com', password_hash: 'hash_bob', first_name: 'Bob', last_name: 'Brown', role: 'retailer' },
-      { email: 'carol@example.com', password_hash: 'hash_carol', first_name: 'Carol', last_name: 'Clark', role: 'wholesaler' },
+      { email: 'alice@example.com', password_hash: await hashPassword('hash_alice'), first_name: 'Alice', last_name: 'Anderson', role: 'customer' },
+      { email: 'bob@example.com', password_hash: await hashPassword('hash_bob'), first_name: 'Bob', last_name: 'Brown', role: 'retailer' },
+      { email: 'carol@example.com', password_hash: await hashPassword('hash_carol'), first_name: 'Carol', last_name: 'Clark', role: 'wholesaler' },
     ];
 
     const userIds: string[] = [];

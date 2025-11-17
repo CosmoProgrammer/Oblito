@@ -8,6 +8,8 @@ export * from './shopInventory.js';
 export * from './warehouseInventory.js';
 export * from './carts.js';
 export * from './cartItems.js';
+export * from './orders.js';
+export * from './orderItems.js';
 
 import { usersSchema } from './users.js';
 import { addressesSchema } from './addresses.js';
@@ -19,6 +21,8 @@ import { shopInventorySchema } from './shopInventory.js';
 import { warehouseInventorySchema } from './warehouseInventory.js';
 import { cartsSchema } from './carts.js';
 import { cartItemsSchema } from './cartItems.js';
+import { ordersSchema } from './orders.js';
+import { orderItemsSchema } from './orderItems.js';
 
 export const schema = {
     ...usersSchema,
@@ -31,6 +35,8 @@ export const schema = {
     ...warehouseInventorySchema,
     ...cartsSchema,
     ...cartItemsSchema,
+    ...ordersSchema,
+    ...orderItemsSchema,
 };
 
 export default schema;
