@@ -118,3 +118,157 @@ export const handleGetUploadUrl = async (req: any, res: any) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
+
+export const handleGetShop = async (req: any, res: any) => {
+    try {
+        const user = req.user as { 
+            id: string, 
+            email: string, 
+            profilePictureUrl: string | null, 
+            firstName: string, 
+            lastName: string, 
+            role: 'customer' | 'retailer' | 'wholesaler' 
+        };
+
+        const result = await db.select()
+            .from(shops)
+            .leftJoin(addresses, eq(shops.addressId, addresses.id))
+            .where(eq(shops.ownerId, user.id))
+            .limit(1);
+
+        if (result.length === 0 || !result[0]) {
+            return res.status(404).json({ message: "Shop not found" });
+        }
+
+        const { shops: shopData, addresses: addressData } = result[0];
+
+        res.json({
+            ...shopData,
+            address: addressData || null
+        });        
+    } catch (e) {
+            console.log('Error getting shop details:', e);
+            if (e instanceof z.ZodError) {
+                return res.status(400).json({ errors: e.issues });
+            }
+            console.error('Error getting shop details:', e);
+            
+            res.status(500).json({ message: e })
+    }
+};
+
+export const handleGetWarehouse = async (req: any, res: any) => {
+    try {
+        const user = req.user as { 
+            id: string, 
+            email: string, 
+            profilePictureUrl: string | null, 
+            firstName: string, 
+            lastName: string, 
+            role: 'customer' | 'retailer' | 'wholesaler' 
+        };
+
+        const result = await db.select()
+            .from(warehouses)
+            .leftJoin(addresses, eq(warehouses.addressId, addresses.id))
+            .where(eq(warehouses.ownerId, user.id))
+            .limit(1);
+
+        if (result.length === 0 || !result[0]) {
+            return res.status(404).json({ message: "Warehouse not found" });
+        }
+
+        const { warehouses: warehouseData, addresses: addressData } = result[0];
+
+        res.json({
+            ...warehouseData,
+            address: addressData || null
+        });        
+    } catch (e) {
+            console.log('Error getting warehouse details:', e);
+            if (e instanceof z.ZodError) {
+                return res.status(400).json({ errors: e.issues });
+            }
+            console.error('Error getting warehouse details:', e);
+            
+            res.status(500).json({ message: e })
+    }
+};
+
+export const handlePatchShop = async (req: any, res: any) => {
+    try {
+        const user = req.user as { 
+            id: string, 
+            email: string, 
+            profilePictureUrl: string | null, 
+            firstName: string, 
+            lastName: string, 
+            role: 'customer' | 'retailer' | 'wholesaler' 
+        };
+
+        const { name, description, addressId } = entitySettingsSchema.parse(req.body);
+
+        if (addressId) {
+            const addr = await db.query.addresses.findFirst({
+                where: and(eq(addresses.id, addressId), eq(addresses.userId, user.id))
+            });
+            if (!addr) return res.status(400).json({ message: "Invalid address ID" });
+        }
+
+        const updatedShop = await db.update(shops)
+            .set({ name, description, addressId })
+            .where(eq(shops.ownerId, user.id))
+            .returning();
+
+        if (!updatedShop.length) return res.status(404).json({ message: "Shop not found" });
+
+        res.json({ message: "Shop updated", shop: updatedShop[0] });
+    } catch (e) {
+            console.log('Error patching shop details:', e);
+            if (e instanceof z.ZodError) {
+                return res.status(400).json({ errors: e.issues });
+            }
+            console.error('Error patching shop details:', e);
+            
+            res.status(500).json({ message: e })
+    }
+};
+
+export const handlePatchWarehouse = async (req: any, res: any) => {
+    try {
+        const user = req.user as { 
+            id: string, 
+            email: string, 
+            profilePictureUrl: string | null, 
+            firstName: string, 
+            lastName: string, 
+            role: 'customer' | 'retailer' | 'wholesaler' 
+        };
+
+        const { name, addressId } = entitySettingsSchema.parse(req.body);
+
+        if (addressId) {
+            const addr = await db.query.addresses.findFirst({
+                where: and(eq(addresses.id, addressId), eq(addresses.userId, user.id))
+            });
+            if (!addr) return res.status(400).json({ message: "Invalid address ID" });
+        }
+
+        const updatedWarehouse = await db.update(warehouses)
+            .set({ name, addressId })
+            .where(eq(warehouses.ownerId, user.id))
+            .returning();
+
+        if (!updatedWarehouse.length) return res.status(404).json({ message: "Warehouse not found" });
+
+        res.json({ message: "Warehouse updated", warehouse: updatedWarehouse[0] });
+    } catch (e) {
+            console.log('Error patching warehouse details:', e);
+            if (e instanceof z.ZodError) {
+                return res.status(400).json({ errors: e.issues });
+            }
+            console.error('Error patching warehouse details:', e);
+            
+            res.status(500).json({ message: e })
+    }
+};
