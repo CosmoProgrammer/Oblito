@@ -7,17 +7,6 @@ export const updateProfileSchema = z.object({
     profilePictureUrl: z.url().optional(),
 });
 
-export const addressSchema = z.object({
-    streetAddress: z.string().min(1),
-    city: z.string().min(1),
-    state: z.string().min(1),
-    postalCode: z.string().min(1),
-    country: z.string().min(1),
-    latitude: z.number(),
-    longitude: z.number(),
-    isPrimary: z.boolean().default(false),
-});
-
 export const entitySettingsSchema = z.object({
     name: z.string().min(1).optional(),
     description: z.string().optional(),
