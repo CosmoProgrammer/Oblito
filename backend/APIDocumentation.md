@@ -4,7 +4,7 @@ This document provides a comprehensive overview of all the API routes available 
 
 ## Authentication
 
-### POST /signup
+### POST /auth/signup
 
 -   **Description**: Registers a new user.
 -   **Request Body**:
@@ -27,7 +27,7 @@ This document provides a comprehensive overview of all the API routes available 
     -   **400**: Bad request (e.g., validation error)
     -   **409**: User with this email already exists
 
-### POST /login
+### POST /auth/login
 
 -   **Description**: Logs in a user.
 -   **Request Body**:
@@ -48,7 +48,7 @@ This document provides a comprehensive overview of all the API routes available 
     -   **400**: Bad request (e.g., validation error)
     -   **401**: Invalid credentials
 
-### GET /user
+### GET /auth/user
 
 -   **Description**: Retrieves the currently authenticated user's data.
 -   **Authentication**: Required (JWT)
@@ -65,6 +65,242 @@ This document provides a comprehensive overview of all the API routes available 
         }
         ```
     -   **401**: Unauthorized
+
+### GET /auth/google
+
+-   **Description**: Initiates Google OAuth authentication.
+-   **Response**: Redirects to Google's authentication page.
+
+### GET /auth/google/callback
+
+-   **Description**: Callback URL for Google OAuth authentication.
+-   **Response**:
+    -   **200**: Successful authentication, redirects to client URL.
+    -   **401**: Authentication failed.
+
+## User Profile
+
+### GET /me
+
+-   **Description**: Retrieves the currently authenticated user's own profile data.
+-   **Authentication**: Required (JWT)
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "id": "...",
+          "email": "user@example.com",
+          "firstName": "John",
+          "lastName": "Doe",
+          "role": "customer",
+          "profilePictureUrl": null
+        }
+        ```
+    -   **401**: Unauthorized
+
+### PATCH /me
+
+-   **Description**: Updates the currently authenticated user's own profile data.
+-   **Authentication**: Required (JWT)
+-   **Request Body**:
+    ```json
+    {
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "profilePictureUrl": "http://example.com/new-pic.jpg"
+    }
+    ```
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "message": "User profile updated successfully"
+        }
+        ```
+    -   **400**: Bad request (e.g., validation error)
+    -   **401**: Unauthorized
+
+### GET /me/upload-url
+
+-   **Description**: Generates a presigned S3 URL for uploading a user profile picture.
+-   **Authentication**: Required (JWT)
+-   **Query Parameters**:
+    -   `fileName` (string, required): The name of the file to be uploaded.
+    -   `fileType` (string, required): The MIME type of the file (e.g., 'image/jpeg').
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "uploadUrl": "...",
+          "finalUrl": "..."
+        }
+        ```
+
+### GET /me/shop
+
+-   **Description**: Retrieves the shop details for the authenticated retailer.
+-   **Authentication**: Required (JWT, role: 'retailer')
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "id": "...",
+          "name": "My Shop",
+          "retailerId": "...",
+          "description": "A great shop",
+          "imageUrl": null
+        }
+        ```
+    -   **401**: Unauthorized
+    -   **403**: Forbidden (if not a retailer)
+    -   **404**: Shop not found
+
+### PATCH /me/shop
+
+-   **Description**: Updates the shop details for the authenticated retailer.
+-   **Authentication**: Required (JWT, role: 'retailer')
+-   **Request Body**:
+    ```json
+    {
+      "name": "Updated Shop Name",
+      "description": "An even greater shop",
+      "imageUrl": "http://example.com/new-shop-pic.jpg"
+    }
+    ```
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "message": "Shop updated successfully"
+        }
+        ```
+    -   **400**: Bad request (e.g., validation error)
+    -   **401**: Unauthorized
+    -   **403**: Forbidden (if not a retailer)
+
+### GET /me/warehouse
+
+-   **Description**: Retrieves the warehouse details for the authenticated wholesaler.
+-   **Authentication**: Required (JWT, role: 'wholesaler')
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "id": "...",
+          "name": "My Warehouse",
+          "wholesalerId": "...",
+          "location": "Warehouse Location"
+        }
+        ```
+    -   **401**: Unauthorized
+    -   **403**: Forbidden (if not a wholesaler)
+    -   **404**: Warehouse not found
+
+### PATCH /me/warehouse
+
+-   **Description**: Updates the warehouse details for the authenticated wholesaler.
+-   **Authentication**: Required (JWT, role: 'wholesaler')
+-   **Request Body**:
+    ```json
+    {
+      "name": "Updated Warehouse Name",
+      "location": "New Warehouse Location"
+    }
+    ```
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "message": "Warehouse updated successfully"
+        }
+        ```
+    -   **400**: Bad request (e.g., validation error)
+    -   **401**: Unauthorized
+    -   **403**: Forbidden (if not a wholesaler)
+
+## Addresses
+
+### GET /addresses
+
+-   **Description**: Retrieves all addresses associated with the authenticated user.
+-   **Authentication**: Required (JWT, role: 'customer', 'retailer', 'wholesaler')
+-   **Response**:
+    -   **200**:
+        ```json
+        [
+          {
+            "id": "...",
+            "userId": "...",
+            "street": "123 Main St",
+            "city": "Anytown",
+            "state": "CA",
+            "zip": "90210",
+            "country": "USA"
+          }
+        ]
+        ```
+    -   **401**: Unauthorized
+
+### POST /addresses
+
+-   **Description**: Creates a new address for the authenticated user.
+-   **Authentication**: Required (JWT, role: 'customer', 'retailer', 'wholesaler')
+-   **Request Body**:
+    ```json
+    {
+      "street": "123 Main St",
+      "city": "Anytown",
+      "state": "CA",
+      "zip": "90210",
+      "country": "USA"
+    }
+    ```
+-   **Response**:
+    -   **201**:
+        ```json
+        {
+          "message": "Address created successfully",
+          "addressId": "..."
+        }
+        ```
+    -   **400**: Bad request (e.g., validation error)
+    -   **401**: Unauthorized
+
+### PATCH /addresses/:id
+
+-   **Description**: Updates an existing address for the authenticated user.
+-   **Authentication**: Required (JWT, role: 'customer', 'retailer', 'wholesaler')
+-   **Request Body**:
+    ```json
+    {
+      "street": "456 Oak Ave",
+      "city": "Otherville"
+    }
+    ```
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "message": "Address updated successfully"
+        }
+        ```
+    -   **400**: Bad request (e.g., validation error)
+    -   **401**: Unauthorized
+    -   **404**: Address not found or not owned by user
+
+### DELETE /addresses/:id
+
+-   **Description**: Deletes an address for the authenticated user.
+-   **Authentication**: Required (JWT, role: 'customer', 'retailer', 'wholesaler')
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "message": "Address deleted successfully"
+        }
+        ```
+    -   **401**: Unauthorized
+    -   **404**: Address not found or not owned by user
 
 ## Products
 
