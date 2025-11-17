@@ -6,8 +6,9 @@ import { orders } from '../db/schema/orders.js';
 import { carts } from '../db/schema/carts.js';
 import { cartItems } from '../db/schema/cartItems.js';
 import { orderItems } from '../db/schema/orderItems.js';
+import { warehouseInventory } from '../db/schema/warehouseInventory.js';
 
-import { createOrderSchema, orderIdParamSchema } from '../validation/order-validation.js';
+import { createOrderSchema, orderIdParamSchema, createWholesaleOrderSchema } from '../validation/order-validation.js';
 
 import { z } from 'zod';
 import { eq, and, inArray, sql } from 'drizzle-orm';
@@ -88,6 +89,7 @@ export const handlePostOrder = async (req: any, res: any) => {
                     await tx.insert(orderItems).values({
                         orderId: orderId,
                         shopInventoryId: item.shopInventoryId,
+                        warehouseInventoryId: item.shopInventory.warehouseInventoryId,
                         quantity: item.quantity,
                         priceAtPurchase: item.shopInventory.price,
                         status: 'pending',
@@ -215,6 +217,210 @@ export const handleDeleteOrder = async (req: any, res: any) => {
             return res.status(400).json({ errors: e.issues });
         }
         console.error('Error deleting order:', e);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+export const handlePostWholesaleOrder = async (req: any, res: any) => {
+    try {
+        const user = req.user as { 
+            id: string, 
+            email: string, 
+            profilePictureUrl: string | null, 
+            firstName: string, 
+            lastName: string, 
+            role: 'customer' | 'retailer' | 'wholesaler' 
+        };
+
+        const { warehouseInventoryId, quantity, paymentMethod, isProxyItem } = createWholesaleOrderSchema.parse(req.body);
+
+        const result = await db.transaction(async (tx) => {
+            const wItem = await tx.query.warehouseInventory.findFirst({
+                where: eq(warehouseInventory.id, warehouseInventoryId),
+                with: {
+                    warehouse: true
+                }
+            })
+
+            if (!wItem) throw new Error("Warehouse item not found");
+
+            const availableStock = parseFloat(wItem.stockQuantity);
+            if (availableStock < quantity) {
+                throw new Error(`Insufficient wholesale stock. Available: ${availableStock}`);
+            }
+
+            const shop = await tx.query.shops.findFirst({
+                where: eq(shops.ownerId, user.id)
+            });
+            if (!shop) throw new Error("Retailer shop not found");
+
+            const orderStatus = isProxyItem ? 'delivered' : 'pending';
+            const deliveryDate = isProxyItem ? new Date() : null;
+
+            const totalAmount = (parseFloat(wItem.price) * quantity).toString();
+
+            const [newOrder] = await tx.insert(orders).values({
+                customerId: user.id,
+                orderType: 'wholesale',
+                warehouseId: wItem.warehouse.id,
+                status: orderStatus,
+                paymentMethod: paymentMethod,
+                totalAmount: totalAmount,
+                offlineOrderDeliveryDate: deliveryDate,
+            }).returning();
+            
+            if(!newOrder) throw new Error("Failed to create order");
+
+            await tx.insert(orderItems).values({
+                orderId: newOrder.id,
+                warehouseInventoryId: wItem.id,
+                quantity: quantity.toString(),
+                priceAtPurchase: wItem.price,
+                status: orderStatus
+            });
+
+            await tx.update(warehouseInventory).set({
+                    stockQuantity: sql`${warehouseInventory.stockQuantity} - ${quantity}`
+                })
+                .where(eq(warehouseInventory.id, wItem.id));
+
+            if(isProxyItem) {
+                const existingShopItem = await tx.query.shopInventory.findFirst({
+                    where: and(
+                        eq(shopInventory.shopId, shop.id),
+                        eq(shopInventory.productId, wItem.productId)
+                    )
+                });
+                if (existingShopItem) {
+                    await tx.update(shopInventory)
+                        .set({
+                            stockQuantity: sql`${shopInventory.stockQuantity} + ${quantity}`,
+                            warehouseInventoryId: wItem.id,
+                            isProxyItem: true
+                        })
+                        .where(eq(shopInventory.id, existingShopItem.id));
+                } else {
+                    await tx.insert(shopInventory).values({
+                        shopId: shop.id,
+                        productId: wItem.productId,
+                        warehouseInventoryId: wItem.id,
+                        stockQuantity: quantity.toString(),
+                        price: wItem.price,
+                        isProxyItem: true
+                    });
+
+                }
+            }
+            return newOrder;
+        });
+
+        res.status(201).json({ 
+            message: "Wholesale order placed successfully", 
+            order: result 
+        });
+        
+    } catch (e) {
+        console.log('Error in placing wholesale order:', e);
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error placing wholesale order:', e);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+export const handleGetWholesaleOrders = async (req: any, res: any) => {
+    try {
+        const user = req.user as { 
+            id: string, 
+            email: string, 
+            profilePictureUrl: string | null, 
+            firstName: string, 
+            lastName: string, 
+            role: 'customer' | 'retailer' | 'wholesaler' 
+        };
+        
+        const myOrders = await db.query.orders.findMany({
+            where: and(
+                eq(orders.customerId, user.id), 
+                eq(orders.orderType, 'wholesale')
+            ),
+            orderBy: (orders, { desc }) => [desc(orders.createdAt)],
+            with: {
+                warehouse: { columns: { name: true } }, 
+                orderItems: {
+                    with: {
+                        warehouseInventory: {
+                            with: {
+                                product: { columns: { name: true, imageURLs: true } }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        res.json({ orders: myOrders });
+    } catch (e) {
+        console.log('Error in getting wholesale orders:', e);
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error in getting wholesale orders:', e);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+export const handleDeleteWholesaleOrder = async (req: any, res: any) => {
+    try {
+        const user = req.user as { 
+            id: string, 
+            email: string, 
+            profilePictureUrl: string | null, 
+            firstName: string, 
+            lastName: string, 
+            role: 'customer' | 'retailer' | 'wholesaler' 
+        };
+        const orderId = req.params.id;
+        const order = await db.query.orders.findFirst({
+            where: and(
+                eq(orders.id, orderId), 
+                eq(orders.customerId, user.id),
+                eq(orders.orderType, 'wholesale')
+            ),
+            with: { orderItems: true }
+        });
+
+        if (!order) return res.status(404).json({ message: "Order not found" });
+
+        if (order.status !== 'pending') {
+            return res.status(400).json({ 
+                message: `Cannot cancel order. Status is '${order.status}'. Proxy orders cannot be cancelled.` 
+            });
+        }
+
+        await db.transaction(async (tx) => {
+            await tx.update(orders).set({ status: 'cancelled' }).where(eq(orders.id, orderId));
+            await tx.update(orderItems).set({ status: 'cancelled' }).where(eq(orderItems.orderId, orderId));
+
+            for (const item of order.orderItems) {
+                if (item.warehouseInventoryId) {
+                    await tx.update(warehouseInventory)
+                        .set({ 
+                            stockQuantity: sql`${warehouseInventory.stockQuantity} + ${item.quantity}` 
+                        })
+                        .where(eq(warehouseInventory.id, item.warehouseInventoryId));
+                }
+            }
+        });
+
+        res.json({ message: "Wholesale order cancelled" });
+    } catch (e) {
+        console.log('Error in deleting wholesale order:', e);
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error in deleting wholesale order:', e);
         res.status(500).json({ message: 'Internal server error' });
     }
 }
