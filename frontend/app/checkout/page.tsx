@@ -27,6 +27,13 @@ type CartItem = {
   imageUrl: string | string[];
 };
 
+type OrderSummary = {
+  subtotal: number;
+  tax: number;
+  total: number;
+  itemCount: number;
+};
+
 const API_BASE_URL = "http://localhost:8000";
 
 export default function CheckoutPage() {
@@ -59,6 +66,10 @@ export default function CheckoutPage() {
     cvv: "",
   });
   const [upiId, setUpiId] = useState("");
+
+  // Order state
+  const [orderData, setOrderData] = useState<any>(null);
+  const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null);
 
   useEffect(() => {
     fetchCart();
@@ -281,20 +292,102 @@ export default function CheckoutPage() {
       return;
     }
 
+    setLoading(true);
+    setError(null);
     try {
-      // Mock order placement - replace with actual API call
-      console.log("Placing order with:", {
-        address: selectedAddress,
-        paymentMethod,
-        cardDetails: paymentMethod === "credit_card" ? cardDetails : null,
-        upiId: paymentMethod === "upi" ? upiId : null,
+      // Calculate and store order summary BEFORE clearing cart
+      const subtotal = cartItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+      const tax = subtotal * 0.08;
+      const orderSum: OrderSummary = {
+        subtotal,
+        tax,
+        total: subtotal + tax,
+        itemCount: cartItems.length,
+      };
+
+      // Prepare order payload
+      const orderPayload = {
+        deliveryAddressId: selectedAddress,
+        paymentMethod: paymentMethod,
+      };
+
+      console.log("Placing order with payload:", orderPayload);
+
+      // POST order to backend
+      const res = await fetch(`${API_BASE_URL}/orders`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(orderPayload),
       });
 
-      setStep("review");
-      setError(null);
+      const data = await res.json();
+      console.log("Order response:", res.status, data);
+
+      if (res.ok) {
+        setError(null);
+        
+        // Store order summary BEFORE clearing cart
+        setOrderSummary(orderSum);
+        
+        // Clear cart after storing summary
+        setCartItems([]);
+        
+        setStep("review");
+
+        // Fetch the created order data
+        await fetchAndSetOrderData();
+      } else {
+        const errorMsg = data.message || data.error || "Failed to place order";
+        setError(errorMsg);
+        console.error("Order error:", data);
+      }
+    } catch (err: any) {
+      console.error("Error placing order:", err);
+      setError(err.message || "Failed to place order");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAndSetOrderData = async () => {
+    try {
+      // Fetch orders from backend
+      const res = await fetch(`${API_BASE_URL}/orders`, {
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      });
+
+      const data = await res.json();
+      console.log("Fetched orders:", data);
+
+      if (res.ok) {
+        // Get the most recent order (first one, since they're ordered by creation date)
+        const ordersList = Array.isArray(data) ? data : data.orders || [];
+        
+        if (ordersList.length > 0) {
+          // Get the most recent order
+          const mostRecentOrder = ordersList[0];
+          setOrderData({
+            // id: mostRecentOrder.id,
+            orderNumber: mostRecentOrder.orderNumber || `ORD-${mostRecentOrder.id?.slice(0, 8).toUpperCase()}`,
+            status: mostRecentOrder.status,
+            totalAmount: mostRecentOrder.totalAmount,
+            paymentMethod: mostRecentOrder.paymentMethod,
+          });
+          console.log("Set order data:", mostRecentOrder);
+        }
+      } else {
+        console.error("Failed to fetch orders:", data);
+      }
     } catch (err) {
-      setError("Failed to place order");
-      console.error(err);
+      console.error("Error fetching order data:", err);
     }
   };
 
@@ -609,9 +702,20 @@ export default function CheckoutPage() {
                 <div className="text-center py-12">
                   <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Placed Successfully!</h2>
-                  <p className="text-gray-600 mb-6">Thank you for your order. You will receive a confirmation email shortly.</p>
+                  <p className="text-gray-600 mb-2">Thank you for your order. You will receive a confirmation email shortly.</p>
+                  
+                  {orderData && (
+                    <div className="mt-6 p-4 bg-gray-50 rounded-lg text-left">
+                      <p className="text-sm text-gray-600 mb-3"><strong>Order Details:</strong></p>
+                      <p className="text-sm"><strong>Order Number:</strong> {orderData.orderNumber}</p>
+                      <p className="text-sm"><strong>Status:</strong> {orderData.status}</p>
+                      <p className="text-sm"><strong>Total Amount:</strong> ${orderData.totalAmount}</p>
+                      <p className="text-sm"><strong>Payment Method:</strong> {orderData.paymentMethod}</p>
+                    </div>
+                  )}
+
                   <Link href="/returns-and-orders">
-                    <Button className="bg-[#febd69] hover:bg-[#f5a623] text-black">
+                    <Button className="bg-[#febd69] hover:bg-[#f5a623] text-black mt-6">
                       View My Orders
                     </Button>
                   </Link>
@@ -625,22 +729,29 @@ export default function CheckoutPage() {
             <h2 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
 
             <div className="space-y-4 mb-6 pb-6 border-b border-gray-200">
-              {cartItems.map((item) => (
-                <div key={item.cartItemId} className="flex justify-between text-sm">
-                  <span className="text-gray-600">
-                    {item.name} x {item.quantity}
-                  </span>
-                  <span className="font-medium">
-                    ${(Number(item.price) * Number(item.quantity)).toFixed(2)}
-                  </span>
-                </div>
-              ))}
+              {/* Show items from orderSummary if on review page, otherwise from cartItems */}
+              {step === "review" && orderSummary ? (
+                <p className="text-sm text-gray-600">
+                  {orderSummary.itemCount} item{orderSummary.itemCount !== 1 ? 's' : ''} ordered
+                </p>
+              ) : (
+                cartItems.map((item) => (
+                  <div key={item.cartItemId} className="flex justify-between text-sm">
+                    <span className="text-gray-600">
+                      {item.name} x {item.quantity}
+                    </span>
+                    <span className="font-medium">
+                      ${(Number(item.price) * Number(item.quantity)).toFixed(2)}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="space-y-3 mb-6">
               <div className="flex justify-between text-gray-600">
                 <span>Subtotal</span>
-                <span>${total.toFixed(2)}</span>
+                <span>${step === "review" && orderSummary ? orderSummary.subtotal.toFixed(2) : total.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Shipping</span>
@@ -648,11 +759,11 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Tax (est.)</span>
-                <span>${tax.toFixed(2)}</span>
+                <span>${step === "review" && orderSummary ? orderSummary.tax.toFixed(2) : tax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-bold text-lg pt-3 border-t border-gray-200">
                 <span>Total</span>
-                <span>${grandTotal.toFixed(2)}</span>
+                <span>${step === "review" && orderSummary ? orderSummary.total.toFixed(2) : grandTotal.toFixed(2)}</span>
               </div>
             </div>
 
@@ -670,14 +781,16 @@ export default function CheckoutPage() {
                 <>
                   <Button
                     onClick={handlePlaceOrder}
+                    disabled={loading}
                     className="w-full bg-[#febd69] hover:bg-[#f5a623] text-black font-bold"
                   >
-                    Place Order
+                    {loading ? "Placing Order..." : "Place Order"}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setStep("address")}
                     className="w-full"
+                    disabled={loading}
                   >
                     Back to Address
                   </Button>

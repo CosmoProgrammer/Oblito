@@ -40,7 +40,7 @@ export default function DashboardPage() {
             ) : (
                 // <div>
                 // <p>You do not have access to this dashboard.</p>
-                // <a href="/login" className="text-blue-600 underline">Go to Login</a>
+                // <a href="/login" className=  "text-blue-600 underline">Go to Login</a>
                 // </div>
                 <RetailerDashboard/>
             )}
