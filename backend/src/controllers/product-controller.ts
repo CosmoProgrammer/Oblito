@@ -13,7 +13,7 @@ import { shopInventory } from '../db/schema/shopInventory.js';
 import { warehouseInventory } from '../db/schema/warehouseInventory.js';
 
 import { getS3UploadUrl } from '../services/s3-service.js';
-import { productQuerySchema, idParamSchema, uploadQuerySchema, createProductSchema } from '../validation/product-validation.js';
+import { productQuerySchema, idParamSchema, uploadQuerySchema, createProductSchema, updateProductSchema } from '../validation/product-validation.js';
 
 export const handleGetUploadUrl = async (req: any, res: any) => {
     try {
@@ -371,3 +371,103 @@ export const getWarehouseProductById = async (req: any, res: any) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
+
+export const patchProductById = async (req: any, res: any) => {
+    try {
+        const user = req.user;
+
+        const { id: inventoryId } = idParamSchema.parse(req.params); 
+        const updates = updateProductSchema.parse(req.body);
+        let listing;
+        let inventoryTable: typeof shopInventory | typeof warehouseInventory;
+        let isOwnerOfGlobalProduct = false;
+
+        if (user.role === 'retailer') {
+            inventoryTable = shopInventory;
+            console.log("Looking up in shop inventory for retailer");
+            listing = await db.select({
+                    id: shopInventory.id,
+                    productId: shopInventory.productId,
+                    creatorId: products.creatorId 
+                })
+                .from(shopInventory)
+                .innerJoin(shops, eq(shopInventory.shopId, shops.id))
+                .innerJoin(products, eq(shopInventory.productId, products.id))
+                .where(and(
+                    eq(shopInventory.id, inventoryId),
+                    eq(shops.ownerId, user.id)
+                ))
+                .limit(1);
+
+        } else { 
+            console.log("Looking up in warehouse inventory for non-retailer");
+            inventoryTable = warehouseInventory;
+
+            listing = await db.select({
+                    id: warehouseInventory.id,
+                    productId: warehouseInventory.productId,
+                    creatorId: products.creatorId
+                })
+                .from(warehouseInventory)
+                .innerJoin(warehouses, eq(warehouseInventory.warehouseId, warehouses.id))
+                .innerJoin(products, eq(warehouseInventory.productId, products.id))
+                .where(and(
+                    eq(warehouseInventory.id, inventoryId),
+                    eq(warehouses.ownerId, user.id) 
+                ))
+                .limit(1);
+        }
+        console.log("Found listing:", listing);
+        if (listing.length === 0) {
+            return res.status(404).json({ message: "Product listing not found or unauthorized" });
+        }
+
+        const target = listing[0];
+        if(!target){
+            return res.status(404).json({ message: "Product listing not found or unauthorized" });
+        }
+        
+        isOwnerOfGlobalProduct = target.creatorId === user.id;
+
+
+        await db.transaction(async (tx) => {
+            const hasGlobalUpdates = updates.name || updates.description || updates.imageUrls || updates.categoryId;
+            
+            if (hasGlobalUpdates) {
+                if (!isOwnerOfGlobalProduct) {
+                    throw new Error("Permission denied: You cannot edit global details (name, description) for this product because you did not create it.");
+                }
+
+                await tx.update(products)
+                    .set({
+                        name: updates.name,
+                        description: updates.description,
+                        categoryId: updates.categoryId,
+                        imageURLs: updates.imageUrls
+                    })
+                    .where(eq(products.id, target.productId));
+            }
+
+            const hasInventoryUpdates = updates.price !== undefined || updates.stockQuantity !== undefined;
+            
+            if (hasInventoryUpdates) {
+                const inventoryData: any = {};
+                if (updates.price !== undefined) inventoryData.price = updates.price.toString();
+                if (updates.stockQuantity !== undefined) inventoryData.stockQuantity = updates.stockQuantity.toString();
+
+                await tx.update(inventoryTable)
+                    .set(inventoryData)
+                    .where(eq(inventoryTable.id, target.id));
+            }
+        });
+
+        res.json({ message: "Product updated successfully" });
+
+    } catch (e) {
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error fetching product by ID:', e);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}

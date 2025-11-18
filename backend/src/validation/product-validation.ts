@@ -37,3 +37,12 @@ export const createProductSchema = z.object({
     imageUrls: z.array(z.url("Must be a valid URL")).default([]),
     //isProxyItem: z.boolean().optional().default(false)
 });
+
+export const updateProductSchema = z.object({
+    name: z.string().min(3).optional(),
+    description: z.string().optional(),
+    categoryId: z.string().uuid().optional(),
+    imageUrls: z.array(z.url()).optional(),
+    price: z.coerce.number().positive().optional(),
+    stockQuantity: z.coerce.number().int().min(0).optional(),
+});

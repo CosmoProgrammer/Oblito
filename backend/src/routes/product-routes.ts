@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { protect } from "../middleware/auth-middleware.js";
 import { checkRole } from '../middleware/role-middleware.js';
 
-import { handleGetUploadUrl, getAllProducts, getProductById, createProduct, getAllWholesaleProducts, getWarehouseProductById } from '../controllers/product-controller.js';
+import { handleGetUploadUrl, getAllProducts, getProductById, createProduct, getAllWholesaleProducts, getWarehouseProductById, patchProductById } from '../controllers/product-controller.js';
 
 const router = Router();
 
@@ -18,5 +18,7 @@ router.post('/products', protect, checkRole(['wholesaler', 'retailer']), createP
 router.get('/warehouse-products', protect, checkRole(['retailer']), getAllWholesaleProducts);
 
 router.get('/warehouse-products/:id', protect, checkRole(['retailer']), getWarehouseProductById);
+
+router.patch('/products/:id', protect, checkRole(['wholesaler', 'retailer']), patchProductById);
 
 export default router;
