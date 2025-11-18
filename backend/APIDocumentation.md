@@ -392,6 +392,31 @@ This document provides a comprehensive overview of all the API routes available 
         ```
     -   **400**: Bad request (e.g., validation error)
 
+### PATCH /products/:id
+
+-   **Description**: Updates an existing product by its ID.
+-   **Authentication**: Required (JWT, role: 'wholesaler' or 'retailer')
+-   **Request Body**:
+    ```json
+    {
+      "name": "Updated Product Name",
+      "description": "Updated product description",
+      "price": 120.00,
+      "stockQuantity": 15
+    }
+    ```
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "message": "Product updated successfully"
+        }
+        ```
+    -   **400**: Bad request (e.g., validation error)
+    -   **401**: Unauthorized
+    -   **403**: Forbidden (if not authorized to update this product)
+    -   **404**: Product not found
+
 ### GET /products/upload-url
 
 -   **Description**: Generates a presigned S3 URL for uploading a product image.
