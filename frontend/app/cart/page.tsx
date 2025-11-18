@@ -236,9 +236,11 @@ export default function CartPage() {
               </div>
 
               <div className="space-y-3">
-                <Button className="w-full bg-[#febd69] hover:bg-[#f5a623] text-black font-bold py-3 text-lg">
-                  Proceed to Checkout
-                </Button>
+                <Link href="/checkout">
+                  <Button className="w-full bg-[#febd69] hover:bg-[#f5a623] text-black font-bold py-3 text-lg">
+                    Proceed to Checkout
+                  </Button>
+                </Link>
                 <Link href="/home">
                   <Button variant="outline" className="w-full">
                     Continue Shopping

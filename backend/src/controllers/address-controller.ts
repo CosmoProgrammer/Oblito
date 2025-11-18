@@ -146,6 +146,8 @@ export const handlePatchAddress = async (req: any, res: any) => {
         const addressId = req.params.id;
         const updateData = updateAddressSchema.parse(req.body);
 
+        console.log("Updating address:", { addressId, updateData });
+
         const existing = await db.query.addresses.findFirst({
             where: and(eq(addresses.id, addressId), eq(addresses.userId, user.id))
         });
@@ -158,7 +160,9 @@ export const handlePatchAddress = async (req: any, res: any) => {
                     .where(eq(addresses.userId, user.id));
             }
 
-            const valuesToUpdate: any = { ...updateData };
+            const valuesToUpdate: any = { 
+                ...updateData 
+            };
 
             const hasAddressChanged = updateData.streetAddress || updateData.city || updateData.country;
             
@@ -170,22 +174,41 @@ export const handlePatchAddress = async (req: any, res: any) => {
                 const geoResult = await geocodeAddress(street, city, country);
                 
                 if (geoResult) {
-                    valuesToUpdate.location = { x: geoResult.lon, y: geoResult.lat };
+                    // Use array format [lon, lat] instead of object
+                    valuesToUpdate.location = [geoResult.lon, geoResult.lat];
+                } else {
+                    console.warn("Geocoding failed, keeping existing location");
                 }
             }
+
+            console.log("Values to update:", valuesToUpdate);
 
             await tx.update(addresses)
                 .set(valuesToUpdate)
                 .where(eq(addresses.id, addressId));
         });
 
-        res.json({ message: "Address updated successfully" });
+        // Fetch updated address to return
+        const updatedAddress = await db.query.addresses.findFirst({
+            where: eq(addresses.id, addressId)
+        });
+
+        const response = {
+            ...updatedAddress,
+            latitude: updatedAddress?.location[1],
+            longitude: updatedAddress?.location[0]
+        };
+
+        res.json({ 
+            message: "Address updated successfully",
+            address: response 
+        });
     } catch (e) {
+        console.error('Error updating address:', e);
         if (e instanceof z.ZodError) {
             return res.status(400).json({ errors: e.issues });
         }
-        console.error('Error updating address:', e);
-        res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error', error: e });
     }
 };
 
