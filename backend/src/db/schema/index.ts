@@ -10,6 +10,10 @@ export * from './carts.js';
 export * from './cartItems.js';
 export * from './orders.js';
 export * from './orderItems.js';
+export * from './payments.js';
+export * from './reviews.js';
+export * from './customerQueries.js';
+export * from './browsingHistory.js';
 
 import { usersSchema } from './users.js';
 import { addressesSchema } from './addresses.js';
@@ -23,6 +27,10 @@ import { cartsSchema } from './carts.js';
 import { cartItemsSchema } from './cartItems.js';
 import { ordersSchema } from './orders.js';
 import { orderItemsSchema } from './orderItems.js';
+import { paymentsSchema } from './payments.js';
+import { reviewsSchema } from './reviews.js';
+import { customerQueriesSchema } from './customerQueries.js';
+import { browsingHistorySchema } from './browsingHistory.js';
 
 export const schema = {
     ...usersSchema,
@@ -37,6 +45,10 @@ export const schema = {
     ...cartItemsSchema,
     ...ordersSchema,
     ...orderItemsSchema,
+    ...paymentsSchema,
+    ...reviewsSchema,
+    ...customerQueriesSchema,
+    ...browsingHistorySchema,
 };
 
 export default schema;

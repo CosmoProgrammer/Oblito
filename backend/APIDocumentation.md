@@ -730,6 +730,81 @@ This document provides a comprehensive overview of all the API routes available 
     -   **400**: Cannot cancel order with status 'delivered' or 'cancelled'
     -   **404**: Order not found
 
+## Reviews
+
+### GET /reviews/product/:productId
+
+-   **Description**: Retrieves all reviews for a specific product.
+-   **URL Params**:
+    -   `productId` (string, required): The ID of the product.
+-   **Response**:
+    -   **200**:
+        ```json
+        [
+          {
+            "id": "...",
+            "rating": 5,
+            "comment": "Great product!",
+            "createdAt": "...",
+            "customer": {
+              "id": "...",
+              "firstName": "John",
+              "lastName": "Doe",
+              "profilePictureUrl": null
+            }
+          }
+        ]
+        ```
+    -   **400**: Bad request (e.g., validation error)
+    -   **404**: Product not found (although controller returns 500 for now if product id is invalid)
+
+### POST /reviews/product/:productId
+
+-   **Description**: Creates a new review for a product.
+-   **Authentication**: Required (JWT, role: 'customer')
+-   **URL Params**:
+    -   `productId` (string, required): The ID of the product.
+-   **Request Body**:
+    ```json
+    {
+      "rating": 5,
+      "comment": "This product is amazing!"
+    }
+    ```
+-   **Response**:
+    -   **201**:
+        ```json
+        {
+          "id": "...",
+          "productId": "...",
+          "customerId": "...",
+          "rating": 5,
+          "comment": "This product is amazing!",
+          "createdAt": "..."
+        }
+        ```
+    -   **400**: Bad request (e.g., validation error)
+    -   **401**: Unauthorized
+    -   **403**: Forbidden (if not a customer)
+
+### DELETE /reviews/:reviewId
+
+-   **Description**: Deletes a review. Only the customer who posted the review can delete it.
+-   **Authentication**: Required (JWT, role: 'customer')
+-   **URL Params**:
+    -   `reviewId` (string, required): The ID of the review to delete.
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "message": "Review deleted successfully"
+        }
+        ```
+    -   **400**: Bad request (e.g., validation error)
+    -   **401**: Unauthorized
+    -   **403**: Forbidden (if not the review's author)
+    -   **404**: Review not found
+
 ## Inventory
 
 ### GET /inventory
