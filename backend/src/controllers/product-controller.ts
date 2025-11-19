@@ -82,15 +82,6 @@ export const getAllProducts = async (req: any, res: any) => {
         let orderBy;
         const [sortField, sortOrder] = sort ? sort.split('_') : ['createdAt', 'desc'];
         const orderFunction = sortOrder === 'asc' ? asc : desc;
-        if (sortField === 'price') {
-            orderBy = orderFunction(shopInventory.price);
-        } else if (sortField === 'name') {
-            orderBy = orderFunction(products.name);
-        } else if (sortField === 'createdAt') {
-            orderBy = orderFunction(products.createdAt);
-        }
-
-        const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
         if (search && !sort) {
             // Sort Priority:
@@ -110,10 +101,12 @@ export const getAllProducts = async (req: any, res: any) => {
                 orderBy = orderFunction(shopInventory.price);
             } else if (sortField === 'name') {
                 orderBy = orderFunction(products.name);
-            } else {
+            } else if (sortField === 'createdAt') {
                 orderBy = orderFunction(products.createdAt);
             }
         }
+
+        const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
         let queryOne = db.select({
                 id: shopInventory.id,
@@ -174,8 +167,6 @@ export const getAllProducts = async (req: any, res: any) => {
 export const getQuickSearchResults = async (req: any, res: any) => {
     try {
         const { q } = quickSearchSchema.parse(req.params);
-
-        console.log('Performing quick search for query:', q);
 
         const results = await db.select({
                 id: products.id,
@@ -321,7 +312,7 @@ export const createProduct = async (req: any, res: any) => {
 
 export const getAllWholesaleProducts = async (req: any, res: any) => {
     try{
-        const {page, limit, sort, minPrice, maxPrice, categories: categoriesReq} = productQuerySchema.parse(req.query);
+        const {page, limit, sort, minPrice, maxPrice, categories: categoriesReq, search} = productQuerySchema.parse(req.query);
         const offset = (page - 1) * limit;
 
         const categoryIds = [];
@@ -347,15 +338,44 @@ export const getAllWholesaleProducts = async (req: any, res: any) => {
             conditions.push(lte(warehouseInventory.price, maxPrice.toString()));
         }
 
+        if (search) {
+            const searchLower = search.toLowerCase();
+
+            const vectorMatch = sql`to_tsvector('english', 
+                ${products.name} || ' ' || 
+                coalesce(${products.description}, '') || ' ' || 
+                ${warehouses.name}
+            ) @@ plainto_tsquery('english', ${search})`;
+
+            const fuzzyMatch = or(
+                ilike(products.name, `%${searchLower}%`),
+                ilike(warehouses.name, `%${searchLower}%`)
+            );
+
+            conditions.push(or(vectorMatch, fuzzyMatch));
+        }
+
         let orderBy;
         const [sortField, sortOrder] = sort ? sort.split('_') : ['createdAt', 'desc'];
         const orderFunction = sortOrder === 'asc' ? asc : desc;
-        if (sortField === 'price') {
-            orderBy = orderFunction(warehouseInventory.price);
-        } else if (sortField === 'name') {
-            orderBy = orderFunction(products.name);
-        } else if (sortField === 'createdAt') {
-            orderBy = orderFunction(products.createdAt);
+
+        if (search && !sort) {
+            orderBy = sql`
+                CASE 
+                    WHEN ${products.name} ILIKE ${search} THEN 1
+                    WHEN ${products.name} ILIKE ${'%' + search + '%'} THEN 2
+                    ELSE 3 
+                END,
+                ts_rank(to_tsvector('english', ${products.name} || ' ' || coalesce(${products.description}, '') || ' ' || ${warehouses.name}), plainto_tsquery('english', ${search})) DESC
+            `;
+        } else {
+            if (sortField === 'price') {
+                orderBy = orderFunction(warehouseInventory.price);
+            } else if (sortField === 'name') {
+                orderBy = orderFunction(products.name);
+            } else if (sortField === 'createdAt') {
+                orderBy = orderFunction(products.createdAt);
+            }
         }
 
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -412,6 +432,37 @@ export const getAllWholesaleProducts = async (req: any, res: any) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 }
+
+export const getQuickWholesaleSearchResults = async (req: any, res: any) => {
+    try {
+        const { q } = quickSearchSchema.parse(req.params);
+        const searchLower = q.toLowerCase();
+
+        const results = await db.select({
+                id: warehouseInventory.id,
+                name: products.name,
+                image: products.imageURLs,
+                category: products.categoryId,
+                warehouseName: warehouses.name
+            })
+            .from(warehouseInventory)
+            .innerJoin(products, eq(warehouseInventory.productId, products.id))
+            .innerJoin(warehouses, eq(warehouseInventory.warehouseId, warehouses.id))
+            .where(or(
+                ilike(products.name, `%${searchLower}%`),
+                ilike(warehouses.name, `%${searchLower}%`)
+            ))
+            .limit(7);
+
+        res.json(results);
+    } catch (e) {
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error fetching product by ID:', e);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
 
 export const getWarehouseProductById = async (req: any, res: any) => {
     try {
