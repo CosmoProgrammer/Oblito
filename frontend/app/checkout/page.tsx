@@ -226,7 +226,10 @@ export default function CheckoutPage() {
     }
 
     setLoading(true);
+    setError(null);
     try {
+      console.log("Deleting address:", addressId);
+      
       const res = await fetch(`${API_BASE_URL}/addresses/${addressId}`, {
         method: "DELETE",
         credentials: "include",
@@ -236,19 +239,40 @@ export default function CheckoutPage() {
         },
       });
 
+      const data = await res.json();
+      console.log("Delete response:", res.status, data);
+
       if (res.ok) {
+        // Only remove from UI after successful backend deletion
         setAddresses(addresses.filter((addr) => addr.id !== addressId));
+        
+        // If deleted address was selected, select a different one
         if (selectedAddress === addressId) {
-          setSelectedAddress(addresses[0]?.id || "");
+          const remainingAddresses = addresses.filter((addr) => addr.id !== addressId);
+          if (remainingAddresses.length > 0) {
+            setSelectedAddress(remainingAddresses[0].id || "");
+          } else {
+            setSelectedAddress("");
+          }
         }
+        
         setError(null);
+        console.log("Address deleted successfully");
       } else {
-        const data = await res.json();
-        setError(data.message || "Failed to delete address");
+        // Detailed error logging
+        console.error("Delete failed:", {
+          status: res.status,
+          message: data.message,
+          error: data.error,
+          fullResponse: data
+        });
+        
+        const errorMsg = data.message || data.error || "Failed to delete address";
+        setError(errorMsg);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error deleting address:", err);
-      setError("Failed to delete address");
+      setError(err.message || "Error deleting address");
     } finally {
       setLoading(false);
     }

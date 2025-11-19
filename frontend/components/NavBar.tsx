@@ -25,15 +25,15 @@ const Navbar = () => {
             />
 
             <div className="flex gap-3 mr-10">
-                <a href="#" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded mr-1">
-                    Hello, {user}
+                <a href="/profile" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded mr-1">
+                    My Profile
                 </a>
-                <Link href="/returns-and-orders" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded mr-1">
+                <a href="/returns-and-orders" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded mr-1">
                     Returns & Orders
-                </Link>
-                <Link href="/cart" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded">
+                </a>
+                <a href="/cart" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded">
                     Cart 
-                </Link>
+                </a>
             </div>
         </nav>
     );
