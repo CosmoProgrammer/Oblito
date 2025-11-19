@@ -314,6 +314,7 @@ This document provides a comprehensive overview of all the API routes available 
     -   `maxPrice` (number, optional): The maximum price of products to fetch.
     -   `sort` (string, optional, default: 'createdAt_desc'): The sort order. Can be `price_asc`, `price_desc`, `name_asc`, `name_desc`, `createdAt_asc`, `createdAt_desc`.
     -   `categories` (string, optional): A comma-separated list of category names to filter by.
+    -   `search` (string, optional): A search term to filter products by name or description.
 -   **Response**:
     -   **200**:
         ```json
@@ -362,6 +363,22 @@ This document provides a comprehensive overview of all the API routes available 
         }
         ```
     -   **404**: Product not found
+
+### GET /products/quick-search/:q
+
+-   **Description**: Performs a quick search for products by name for the search bar.
+-   **URL Params**:
+    -   `q` (string, required): The search query.
+-   **Response**:
+    -   **200**:
+        ```json
+        [
+          {
+            "id": "...",
+            "name": "Product Name"
+          }
+        ]
+        ```
 
 ### POST /products
 
@@ -464,6 +481,24 @@ This document provides a comprehensive overview of all the API routes available 
         }
         ```
     -   **404**: Product not found
+
+### GET /warehouse-products/quick-search/:q
+
+-   **Description**: Performs a quick search for warehouse products by name for the search bar.
+-   **Authentication**: Required (JWT, role: 'retailer')
+-   **URL Params**:
+    -   `q` (string, required): The search query.
+-   **Response**:
+    -   **200**:
+        ```json
+        [
+          {
+            "id": "...",
+            "name": "Product Name"
+          }
+        ]
+        ```
+
 
 ## Categories
 
