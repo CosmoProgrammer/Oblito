@@ -3,7 +3,7 @@ import crypto from 'crypto';
 
 
 import db from '../db/index.js';
-import { eq, lte, gte, asc, desc, and, inArray, sql, ne } from "drizzle-orm";
+import { eq, lte, gte, asc, desc, and, inArray, sql, ilike, or } from "drizzle-orm";
 import { users } from '../db/schema/users.js';
 import { products } from '../db/schema/products.js';
 import { categories } from '../db/schema/categories.js';
@@ -13,7 +13,8 @@ import { shopInventory } from '../db/schema/shopInventory.js';
 import { warehouseInventory } from '../db/schema/warehouseInventory.js';
 
 import { getS3UploadUrl } from '../services/s3-service.js';
-import { productQuerySchema, idParamSchema, uploadQuerySchema, createProductSchema, updateProductSchema } from '../validation/product-validation.js';
+import { productQuerySchema, idParamSchema, uploadQuerySchema, createProductSchema, updateProductSchema, quickSearchSchema } from '../validation/product-validation.js';
+import { error } from 'console';
 
 export const handleGetUploadUrl = async (req: any, res: any) => {
     try {
@@ -35,7 +36,7 @@ export const handleGetUploadUrl = async (req: any, res: any) => {
 
 export const getAllProducts = async (req: any, res: any) => {
     try{
-        const {page, limit, sort, minPrice, maxPrice, categories: categoriesReq} = productQuerySchema.parse(req.query);
+        const {page, limit, sort, minPrice, maxPrice, categories: categoriesReq, search } = productQuerySchema.parse(req.query);
         const offset = (page - 1) * limit;
 
         const categoryIds = [];
@@ -61,6 +62,23 @@ export const getAllProducts = async (req: any, res: any) => {
             conditions.push(lte(shopInventory.price, maxPrice.toString()));
         }
 
+        if (search) {
+            const searchLower = search.toLowerCase();
+
+            const fullTextCondition = sql`to_tsvector('english', 
+                ${products.name} || ' ' || 
+                coalesce(${products.description}, '') || ' ' || 
+                ${shops.name}
+            ) @@ plainto_tsquery('english', ${search})`;
+
+            const substringCondition = or(
+                ilike(products.name, `%${searchLower}%`),
+                ilike(shops.name, `%${searchLower}%`)
+            );
+
+            conditions.push(or(fullTextCondition, substringCondition));
+        }
+
         let orderBy;
         const [sortField, sortOrder] = sort ? sort.split('_') : ['createdAt', 'desc'];
         const orderFunction = sortOrder === 'asc' ? asc : desc;
@@ -74,6 +92,29 @@ export const getAllProducts = async (req: any, res: any) => {
 
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
+        if (search && !sort) {
+            // Sort Priority:
+            // 1. Exact Name Match (Highest Priority)
+            // 2. Substring Name Match
+            // 3. Full Text Rank
+            orderBy = sql`
+                CASE 
+                    WHEN ${products.name} ILIKE ${search} THEN 1  -- Exact match
+                    WHEN ${products.name} ILIKE ${'%' + search + '%'} THEN 2 -- Substring match
+                    ELSE 3 
+                END,
+                ts_rank(to_tsvector('english', ${products.name} || ' ' || coalesce(${products.description}, '')), plainto_tsquery('english', ${search})) DESC
+            `;
+        } else {
+            if (sortField === 'price') {
+                orderBy = orderFunction(shopInventory.price);
+            } else if (sortField === 'name') {
+                orderBy = orderFunction(products.name);
+            } else {
+                orderBy = orderFunction(products.createdAt);
+            }
+        }
+
         let queryOne = db.select({
                 id: shopInventory.id,
                 name: products.name,
@@ -84,9 +125,11 @@ export const getAllProducts = async (req: any, res: any) => {
                 creatorId: products.creatorId,
                 createdAt: products.createdAt,
                 stockQuantity: shopInventory.stockQuantity,
+                shopName: shops.name,
             })
             .from(shopInventory)
             .innerJoin(products, eq(shopInventory.productId, products.id))
+            .innerJoin(shops, eq(shopInventory.shopId, shops.id))
             .where(whereClause)
             .limit(limit)
             .offset(offset);
@@ -98,6 +141,7 @@ export const getAllProducts = async (req: any, res: any) => {
         let queryTwo = db.select({ count: sql<number>`count(*)` })
                 .from(shopInventory)
                 .innerJoin(products, eq(shopInventory.productId, products.id))
+                .innerJoin(shops, eq(shopInventory.shopId, shops.id))
                 .where(whereClause);
 
 
@@ -124,6 +168,32 @@ export const getAllProducts = async (req: any, res: any) => {
         }
         console.error('Error fetching products:', e);
         res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+export const getQuickSearchResults = async (req: any, res: any) => {
+    try {
+        const { q } = quickSearchSchema.parse(req.params);
+
+        console.log('Performing quick search for query:', q);
+
+        const results = await db.select({
+                id: products.id,
+                name: products.name,
+                imageURLs: products.imageURLs,
+                categoryId: products.categoryId
+            })
+            .from(products)
+            .where(ilike(products.name, `%${q}%`)) 
+            .limit(7);
+
+        res.json(results);
+    } catch (e) {
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error fetching products:', e);
+        res.status(500).json({ message: 'Internal server error', error: e });
     }
 };
 

@@ -6,7 +6,8 @@ export const productQuerySchema = z.object({
         minPrice: z.preprocess((val)=> val ? Number(val) : undefined, z.number().min(0).optional()),
         maxPrice: z.preprocess((val)=> val ? Number(val) : undefined, z.number().min(0).optional()),
         sort: z.string().regex(/^(price|name|createdAt)_(asc|desc)$/).optional().default('createdAt_desc'),
-        categories: z.preprocess((val)=>(val as string)?.split(',') || [], z.array(z.string()).default([]))
+        categories: z.preprocess((val)=>(val as string)?.split(',') || [], z.array(z.string()).default([])),
+        search: z.string().optional(),
     }).refine((data) => {
         if (data.minPrice !== undefined && data.maxPrice !== undefined) {
             return data.maxPrice >= data.minPrice;
@@ -45,4 +46,8 @@ export const updateProductSchema = z.object({
     imageUrls: z.array(z.url()).optional(),
     price: z.coerce.number().positive().optional(),
     stockQuantity: z.coerce.number().int().min(0).optional(),
+});
+
+export const quickSearchSchema = z.object({
+    q: z.string().min(1),
 });

@@ -1,5 +1,5 @@
-import { relations } from "drizzle-orm";
-import { pgTable, text, uuid, timestamp, numeric } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { pgTable, text, uuid, timestamp, numeric, index } from "drizzle-orm/pg-core";
 import { categories } from "./categories.js";
 import { users } from "./users.js"
 import { shopInventory } from "./shopInventory.js";
@@ -13,6 +13,11 @@ export const products = pgTable("products", {
     imageURLs: text("image_urls").array().default([]),
     creatorId: uuid("creator_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (table) => {
+    return {
+        nameTrgmIndex: index("products_name_trgm_index").using("gin", table.name.op("gin_trgm_ops")),
+        searchVectorIndex: index("products_search_vector_index").using("gin", sql`to_tsvector('english', ${table.name} || ' ' || coalesce(${table.description}, ''))`),
+    }
 });
 
 export const productsRelations = relations(products, ({ many }) => ({
