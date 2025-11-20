@@ -113,6 +113,7 @@ export const handlePostOrder = async (req: any, res: any) => {
         });
 
     } catch (e) {
+        console.log('Error in posting order:', e);
         if (e instanceof z.ZodError) {
             return res.status(400).json({ errors: e.issues });
         }
