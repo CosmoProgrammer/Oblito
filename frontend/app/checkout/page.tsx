@@ -113,7 +113,7 @@ export default function CheckoutPage() {
           // Normalize field names - handle both streetAddress and street
           street: addr.street || addr.streetAddress || "",
           streetAddress: addr.streetAddress || addr.street || "",
-          id: addr.id || `temp-${index}`,
+          id: addr.id,
         }));
         setAddresses(addressList);
         if (addressList.length > 0) {

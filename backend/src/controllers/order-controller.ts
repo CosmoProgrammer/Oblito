@@ -24,12 +24,12 @@ export const handlePostOrder = async (req: any, res: any) => {
             lastName: string, 
             role: 'customer' | 'retailer' | 'wholesaler' 
         };
-
         const { deliveryAddressId, paymentMethod } = createOrderSchema.parse(req.body);
 
         const address = await db.query.addresses.findFirst({
             where: and(eq(addresses.id, deliveryAddressId), eq(addresses.userId, user.id))
         });
+
         if (!address) return res.status(400).json({ message: "Invalid delivery address" });
 
         const userCart = await db.query.carts.findFirst({
