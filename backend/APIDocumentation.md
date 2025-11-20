@@ -910,3 +910,86 @@ This document provides a comprehensive overview of all the API routes available 
     -   **401**: Unauthorized
     -   **403**: Forbidden
     -   **404**: Order not found
+
+## Returns
+
+### POST /returns/request
+
+-   **Description**: Allows a customer to request a return for a delivered order item.
+-   **Authentication**: Required (JWT, role: 'customer')
+-   **Request Body**:
+    ```json
+    {
+      "orderItemId": "..."
+    }
+    ```
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "message": "Return requested successfully."
+        }
+        ```
+    -   **400**: Bad request (e.g., item not delivered yet)
+    -   **404**: Order item not found or not owned by user
+
+### GET /returns
+
+-   **Description**: Retrieves a list of all return requests for a retailer's shop.
+-   **Authentication**: Required (JWT, role: 'retailer')
+-   **Response**:
+    -   **200**:
+        ```json
+        [
+          {
+            "id": "...",
+            "orderId": "...",
+            "shopInventoryId": "...",
+            "quantity": 1,
+            "priceAtPurchase": "100.00",
+            "status": "to_return",
+            "order": {
+                "id": "...",
+                "customerId": "...",
+                "customer": {
+                    "firstName": "John",
+                    "lastName": "Doe",
+                    "email": "user@example.com"
+                }
+            },
+            "shopInventory": {
+                "id": "...",
+                "productId": "...",
+                "product": {
+                    "id": "...",
+                    "name": "Product Name",
+                    "imageURLs": ["url1", "url2"]
+                }
+            }
+          }
+        ]
+        ```
+    -   **404**: Shop not found for the retailer
+
+### PATCH /returns/:returnId
+
+-   **Description**: Allows a retailer to mark a return request as 'returned'. This will also update the shop's inventory.
+-   **Authentication**: Required (JWT, role: 'retailer')
+-   **URL Params**:
+    -   `returnId` (string, required): The ID of the order item to be returned.
+-   **Request Body**:
+    ```json
+    {
+      "status": "returned"
+    }
+    ```
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "message": "Item marked as returned and stock updated."
+        }
+        ```
+    -   **400**: Bad request (e.g., item not in 'to_return' status)
+    -   **403**: Unauthorized
+    -   **404**: Return item not found

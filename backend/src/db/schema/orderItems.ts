@@ -4,7 +4,7 @@ import { orders } from './orders.js';
 import { shopInventory } from './shopInventory.js';
 import { warehouseInventory } from './warehouseInventory.js';
 
-export const orderStatusEnum = pgEnum('order_status', ['pending', 'processed', 'shipped', 'delivered', 'cancelled']);
+export const orderStatusEnum = pgEnum('order_status', ['pending', 'processed', 'shipped', 'delivered', 'cancelled', 'to_return', 'returned']);
 
 export const orderItems = pgTable('order_items', {
     id: uuid('id').primaryKey().defaultRandom(),

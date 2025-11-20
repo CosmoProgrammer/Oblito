@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const updateOrderItemStatusSchema = z.object({
-    status: z.enum(['processed', 'shipped', 'delivered']),
+    status: z.enum(['processed', 'shipped', 'delivered', 'to_return', 'returned']),
 });
 
 export const updatePaymentStatusSchema = z.object({
