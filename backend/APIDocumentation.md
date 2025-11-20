@@ -813,3 +813,100 @@ This document provides a comprehensive overview of all the API routes available 
 -   **Authentication**: Required (JWT, role: 'retailer' or 'wholesaler')
 -   **Query Parameters**: Same as `/products`.
 -   **Response**: Same as `/products`.
+
+## Seller Orders
+
+### GET /seller-orders
+
+-   **Description**: Retrieves orders for the authenticated seller (retailer or wholesaler).
+-   **Authentication**: Required (JWT, role: 'retailer', 'wholesaler')
+-   **Response**:
+    -   **200**:
+        ```json
+        [
+          {
+            "id": "...",
+            "customerId": "...",
+            "orderType": "...",
+            "shopId": "...",
+            "status": "...",
+            "totalAmount": "...",
+            "paymentMethod": "...",
+            "deliveryAddressId": "...",
+            "createdAt": "...",
+            "orderItems": [
+              {
+                "id": "...",
+                "orderId": "...",
+                "shopInventoryId": "...",
+                "quantity": 0,
+                "priceAtPurchase": "...",
+                "status": "...",
+                "shopInventory": {
+                  "product": {
+                    "name": "...",
+                    "imageURLs": ["..."]
+                  }
+                }
+              }
+            ],
+            "deliveryAddress": {
+              "street": "...",
+              "city": "...",
+              "state": "...",
+              "zip": "...",
+              "country": "..."
+            }
+          }
+        ]
+        ```
+    -   **401**: Unauthorized
+    -   **403**: Forbidden
+
+### PATCH /seller-orders/items/:orderItemId
+
+-   **Description**: Updates the status of an order item. Only accessible by the seller who owns the product in the order item.
+-   **Authentication**: Required (JWT, role: 'retailer', 'wholesaler')
+-   **URL Params**:
+    -   `orderItemId` (string, required): The ID of the order item to update.
+-   **Request Body**:
+    ```json
+    {
+      "status": "shipped"
+    }
+    ```
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "message": "Order item status updated successfully"
+        }
+        ```
+    -   **400**: Bad request (e.g., validation error)
+    -   **401**: Unauthorized
+    -   **403**: Forbidden
+    -   **404**: Order item not found
+
+### PATCH /seller-orders/:orderId/payment
+
+-   **Description**: Updates the payment status of an order. Only accessible by the seller who owns the order.
+-   **Authentication**: Required (JWT, role: 'retailer', 'wholesaler')
+-   **URL Params**:
+    -   `orderId` (string, required): The ID of the order to update.
+-   **Request Body**:
+    ```json
+    {
+      "paymentStatus": "paid"
+    }
+    ```
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "message": "Payment status updated successfully"
+        }
+        ```
+    -   **400**: Bad request (e.g., validation error)
+    -   **401**: Unauthorized
+    -   **403**: Forbidden
+    -   **404**: Order not found

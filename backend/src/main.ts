@@ -34,6 +34,7 @@ import orderRoutes from "./routes/order-routes.js";
 import userRoutes from "./routes/user-routes.js";
 import addressRoutes from "./routes/address-routes.js";
 import reviewRoutes from "./routes/review-routes.js";
+import sellerOrderRoutes from './routes/seller-order-routes.js';
 
 import "../passport-config.js";
 
@@ -65,6 +66,7 @@ app.use("/", orderRoutes);
 app.use("/", userRoutes);
 app.use("/", addressRoutes);
 app.use("/", reviewRoutes);
+app.use("/", sellerOrderRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
