@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useState } from 'react';
-import { Star } from 'lucide-react'; 
+import { Star, ShoppingCart, Minus, Plus } from 'lucide-react'; 
 import { useCart } from '@/app/cart/cart_util';
 
 // Define the shape of the props this component will receive
@@ -34,51 +34,51 @@ export function ProductInteractions({ product }: ProductInteractionsProps) {
     }
 
   return (
-    // We start from Price, as Title/Category are in the server page
-    <>
-      {/* Price */}
-      {/* <div className="flex items-center gap-4">
-        <span className="text-4xl font-bold text-gray-900">${product.price}</span>
-      </div> */}
-
-      {/* Ratings */}
-      {/* <div className="flex items-center gap-2">
-        {[...Array(5)].map((_, i) => (
-          <Star
-            key={i}
-            className={`w-5 h-5 ${i < Math.round(product.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-          />
-        ))}
-        <span className="text-gray-600 text-sm">{product.rating.toFixed(1)} • 122 reviews</span>
-      </div> */}
-
+    <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
       {/* Quantity Selector */}
-      <div>
-        <label className="text-gray-700 font-medium mb-2 block">Quantity:</label>
-        <div className="flex items-center border rounded-lg w-fit">
-          <button onClick={decreaseQuantity} className="px-3 py-1 text-lg hover:bg-gray-100">−</button>
-          <span className="px-4 py-1 border-x text-lg font-medium select-none">{quantity}</span>
-          <button onClick={increaseQuantity} className="px-3 py-1 text-lg hover:bg-gray-100">+</button>
-        </div>
+      <div className="flex items-center bg-gray-100 rounded-xl p-1.5 w-fit">
+        <button 
+          onClick={decreaseQuantity} 
+          className="w-10 h-10 flex items-center justify-center rounded-lg bg-white text-gray-600 shadow-sm hover:text-gray-900 transition-all active:scale-95 disabled:opacity-50"
+          disabled={quantity <= 1}
+        >
+          <Minus className="w-4 h-4" />
+        </button>
+        <span className="w-12 text-center font-bold text-lg text-gray-900 select-none">{quantity}</span>
+        <button 
+          onClick={increaseQuantity} 
+          className="w-10 h-10 flex items-center justify-center rounded-lg bg-white text-gray-600 shadow-sm hover:text-gray-900 transition-all active:scale-95"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Add to Cart Button */}
-      <button 
-        onClick={addToCartHandler}
-        disabled={isLoading}
-        className="w-full sm:w-auto bg-[#febd69] hover:bg-[#f5a623] disabled:bg-gray-400 text-black font-medium py-3 px-10 rounded-lg transition-colors cursor-pointer">
-        {isLoading ? 'Adding...' : 'Add to Cart'}
-      </button>
-      {addedMsg && (
-        <p className={`font-medium mt-3 transition-opacity duration-300 ${addedMsg.includes('Failed') ? 'text-red-600' : 'text-green-600'}`}>
-          {addedMsg}
-        </p>)}
-
-      {/* Description */}
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Description</h2>
-        <p className="text-gray-600 leading-relaxed">{product.description}</p>
+      <div className="flex-grow relative">
+        <button 
+          onClick={addToCartHandler}
+          disabled={isLoading}
+          className="w-full bg-gray-900 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-bold py-3.5 px-8 rounded-xl transition-all shadow-sm hover:shadow-md active:scale-[0.98] flex items-center justify-center gap-2 text-lg"
+        >
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+              Adding...
+            </span>
+          ) : (
+            <>
+              <ShoppingCart className="w-5 h-5" />
+              Add to Cart
+            </>
+          )}
+        </button>
+        
+        {addedMsg && (
+          <div className={`absolute top-full left-0 right-0 mt-2 text-center text-sm font-bold py-2 px-3 rounded-lg animate-in fade-in slide-in-from-top-2 ${addedMsg.includes('Failed') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+            {addedMsg}
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }

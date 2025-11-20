@@ -18,12 +18,14 @@ export default function RootLayout({
 
     return (
         <html lang="en">
-            <body>
-                <div className="bg-[#FFE4C4]">
+            <body className="bg-gray-50 text-gray-900 antialiased">
+                <div className="min-h-screen flex flex-col">
                     {showNavbar && (<>
                 <NavBar />
                 </>)}
-                {children}
+                <main className="flex-grow">
+                    {children}
+                </main>
                 {showNavbar && (<Footer />)}
                 </div>
                 

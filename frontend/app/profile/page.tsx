@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, Mail, User, Phone, MapPin, Loader } from "lucide-react";
+import { Camera, Mail, User, Phone, MapPin, Loader, Save, X } from "lucide-react";
 import Link from "next/link";
 
 type UserProfile = {
@@ -233,6 +233,12 @@ export default function ProfilePage() {
     setSaving(true);
     setError(null);
     try {
+      let payload;
+       if(formData.phone !== "") {
+        payload = {firstName: formData.firstName, lastName: formData.lastName, phone: formData.phone};
+      } else {
+        payload = {firstName: formData.firstName, lastName: formData.lastName};
+      }
       const res = await fetch(`${API_BASE_URL}/me`, {
         method: "PATCH",
         credentials: "include",
@@ -240,7 +246,7 @@ export default function ProfilePage() {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -276,10 +282,10 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FFE4C4] flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="w-12 h-12 animate-spin mx-auto mb-4 text-gray-600" />
-          <p className="text-gray-600">Loading your profile...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <Loader className="w-10 h-10 animate-spin text-[#febd69] mb-4" />
+          <p className="text-gray-600 font-medium">Loading your profile...</p>
         </div>
       </div>
     );
@@ -287,11 +293,11 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#FFE4C4] flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-gray-100">
           <p className="text-gray-600 mb-4">Failed to load profile</p>
           <Link href="/home">
-            <Button className="bg-[#febd69] hover:bg-[#f5a623] text-black">
+            <Button className="bg-[#febd69] hover:bg-[#f5a623] text-black font-bold rounded-xl">
               Back to Home
             </Button>
           </Link>
@@ -301,199 +307,200 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFE4C4]">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">My Profile</h1>
-          <p className="text-gray-600 mt-2">Manage your personal information</p>
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">My Profile</h1>
+          <p className="text-gray-500 mt-2">Manage your personal information and account settings</p>
         </div>
 
         {/* Success Message */}
         {success && (
-          <div className="bg-green-100 text-green-700 p-4 rounded mb-6">
-            {success}
+          <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-8 rounded-r shadow-sm animate-in fade-in slide-in-from-top-2">
+            <p className="text-sm text-green-700 font-medium">{success}</p>
           </div>
         )}
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded mb-6 flex justify-between items-center">
-            <span>{error}</span>
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-8 rounded-r shadow-sm flex justify-between items-center animate-in fade-in slide-in-from-top-2">
+            <p className="text-sm text-red-700 font-medium">{error}</p>
             <button
               onClick={() => setError(null)}
-              className="text-red-700 hover:text-red-900 font-bold"
+              className="text-red-700 hover:text-red-900"
             >
-              ✕
+              <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
         {/* Profile Card */}
-        <div className="bg-white rounded-lg shadow-md p-8 space-y-8">
-          {/* Profile Picture Section */}
-          <div className="flex flex-col items-center">
-            <div className="relative">
-              <img
-                src={previewUrl || "/avatar-placeholder.png"}
-                alt="Profile"
-                className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
-              />
-              {isEditing && (
-                <label className="absolute bottom-0 right-0 bg-[#febd69] hover:bg-[#f5a623] text-black p-2 rounded-full cursor-pointer shadow-lg">
-                  <Camera className="w-5 h-5" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageSelect}
-                    className="hidden"
-                  />
-                </label>
-              )}
-            </div>
-
-            {isEditing && imageFile && (
-              <Button
-                onClick={handleUploadImage}
-                disabled={uploadingImage}
-                className="mt-4 bg-[#febd69] hover:bg-[#f5a623] text-black"
-              >
-                {uploadingImage ? "Uploading..." : "Upload Photo"}
-              </Button>
-            )}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* Cover / Header Background */}
+          <div className="h-32 bg-gradient-to-r from-gray-900 to-gray-800 relative">
+            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
           </div>
 
-          {/* Personal Information */}
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Personal Information</h2>
+          <div className="px-8 pb-8">
+            {/* Profile Picture Section */}
+            <div className="relative -mt-16 mb-8 flex flex-col items-center">
+              <div className="relative group">
+                <div className="w-32 h-32 rounded-full p-1 bg-white shadow-lg">
+                  <img
+                    src={previewUrl || "/avatar-placeholder.png"}
+                    alt="Profile"
+                    className="w-full h-full rounded-full object-cover bg-gray-100"
+                  />
+                </div>
+                {isEditing && (
+                  <label className="absolute bottom-1 right-1 bg-gray-700 hover:bg-gray-600 text-white p-2.5 rounded-full cursor-pointer shadow-lg transition-transform hover:scale-110 active:scale-95">
+                    <Camera className="w-5 h-5" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
 
-            {/* Role Badge */}
-            <div>
-              <label className="text-sm font-medium text-gray-600">Account Type</label>
-              <div className="mt-2 inline-block">
-                <span className="px-4 py-2 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 capitalize">
+              {isEditing && imageFile && (
+                <Button
+                  onClick={handleUploadImage}
+                  disabled={uploadingImage}
+                  className="mt-4 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs"
+                  size="sm"
+                >
+                  {uploadingImage ? "Uploading..." : "Save New Photo"}
+                </Button>
+              )}
+              
+              <div className="mt-4 text-center">
+                <h2 className="text-2xl font-bold text-gray-900">{user.firstName} {user.lastName}</h2>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 capitalize mt-1 border border-blue-100">
                   {user.role}
                 </span>
               </div>
             </div>
 
-            {/* First Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                <User className="w-4 h-4 inline mr-2" />
-                First Name
-              </label>
-              <input
-                type="text"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#febd69] disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-            </div>
+            {/* Personal Information Form */}
+            <div className="space-y-6 max-w-2xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* First Name */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <User className="w-4 h-4 text-gray-400" /> First Name
+                  </label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500"
+                  />
+                </div>
 
-            {/* Last Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                <User className="w-4 h-4 inline mr-2" />
-                Last Name
-              </label>
-              <input
-                type="text"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#febd69] disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-            </div>
+                {/* Last Name */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <User className="w-4 h-4 text-gray-400" /> Last Name
+                  </label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500"
+                  />
+                </div>
+              </div>
 
-            {/* Email (Read-only) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                <Mail className="w-4 h-4 inline mr-2" />
-                Email
-              </label>
-              <input
-                type="email"
-                value={user.email}
-                disabled
-                className="w-full px-4 py-2 border rounded-lg bg-gray-100 cursor-not-allowed text-gray-600"
-              />
-              <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
-            </div>
+              {/* Email (Read-only) */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-gray-400" /> Email Address
+                </label>
+                <input
+                  type="email"
+                  value={user.email}
+                  disabled
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed"
+                />
+              </div>
 
-            {/* Phone */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                <Phone className="w-4 h-4 inline mr-2" />
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                placeholder="Enter your phone number"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#febd69] disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-            </div>
+              {/* Phone */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-gray-400" /> Phone Number
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  disabled={!isEditing}
+                  placeholder="+1 (555) 000-0000"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500"
+                />
+              </div>
 
-            {/* Member Since */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                <MapPin className="w-4 h-4 inline mr-2" />
-                Member Since
-              </label>
-              <input
-                type="text"
-                value={new Date(user.createdAt).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-                disabled
-                className="w-full px-4 py-2 border rounded-lg bg-gray-100 cursor-not-allowed text-gray-600"
-              />
-            </div>
-          </div>
+              {/* Member Since */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-gray-400" /> Member Since
+                </label>
+                <div className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 flex items-center">
+                  {new Date(user.createdAt).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </div>
+              </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-6 border-t">
-            {!isEditing ? (
-              <Button
-                onClick={() => setIsEditing(true)}
-                className="flex-1 bg-[#febd69] hover:bg-[#f5a623] text-black font-bold"
-              >
-                Edit Profile
-              </Button>
-            ) : (
-              <>
-                <Button
-                  onClick={handleSaveProfile}
-                  disabled={isSaving}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold"
-                >
-                  {isSaving ? "Saving..." : "Save Changes"}
-                </Button>
-                <Button
-                  onClick={handleCancel}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-              </>
-            )}
+              {/* Action Buttons */}
+              <div className="pt-8 mt-8 border-t border-gray-100 flex gap-4">
+                {!isEditing ? (
+                  <Button
+                    onClick={() => setIsEditing(true)}
+                    className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-6 rounded-xl shadow-sm hover:shadow-md transition-all"
+                  >
+                    Edit Profile
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      onClick={handleSaveProfile}
+                      disabled={isSaving}
+                      className="flex-1 bg-gray-900 hover:bg-gray-800 text-white font-bold py-6 rounded-xl shadow-sm hover:shadow-md transition-all"
+                    >
+                      {isSaving ? (
+                        <span className="flex items-center gap-2">
+                          <Loader className="w-4 h-4 animate-spin" /> Saving...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <Save className="w-4 h-4" /> Save Changes
+                        </span>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleCancel}
+                      variant="outline"
+                      className="flex-1 py-6 rounded-xl border-gray-200 hover:bg-gray-50"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Back Link */}
-        <Link href="/home" className="mt-6 inline-block">
-          <Button variant="outline">Back to Home</Button>
-        </Link>
       </div>
     </div>
   );

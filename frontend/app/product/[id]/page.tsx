@@ -32,14 +32,11 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     async function fetchCategories() {
       try {
-        console.log("📂 Fetching categories...");
         const res = await fetch(`${API_BASE_URL}/categories`, {
           credentials: 'include',
           method: 'GET',
         });
         const data = await res.json();
-        console.log("✅ Categories fetched:", data);
-        
         if (res.ok) {
           setCategories(data);
         }
@@ -50,18 +47,14 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
     async function fetchProduct() {
       try {
-        console.log("📦 Fetching product:", id);
         const res = await fetch(`${API_BASE_URL}/products/${id}`, {
           credentials: 'include',
           method: 'GET',
         });
         const data = await res.json();
-        console.log("Full backend response:", data);
         
         if (res.ok) {
           const productData = data.product;
-          console.log("Extracted product data:", productData);
-          
           if (productData && productData.id) {
             setProduct(productData);
           } else {
@@ -88,20 +81,32 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
       const category = categories.find(cat => cat.id === product.categoryId);
       if (category) {
         setCategoryName(category.name);
-        console.log("🏷️ Category name set to:", category.name);
       } else {
-        console.warn("⚠️ Category not found for ID:", product.categoryId);
         setCategoryName("Unknown Category");
       }
     }
   }, [product, categories]);
 
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
+          <div className="h-4 w-48 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="text-center py-12 text-red-600">{error}</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-gray-100">
+          <p className="text-red-600 font-medium mb-2">Something went wrong</p>
+          <p className="text-gray-500">{error}</p>
+        </div>
+      </div>
+    );
   }
 
   if (!product) {
@@ -109,28 +114,67 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   }
 
   return (
-    <div>
-      <div className="max-w-7xl mx-auto px-5 py-12 grid grid-cols-1 lg:grid-cols-12 gap-16">
-        <div className="w-full lg:col-span-7">
-          <CarouselDemo imageURLs={product.imageURLs} />
-        </div>
-        <div className="flex flex-col justify-start space-y-8 lg:col-span-5">
-          <div>
-            <h1 className="text-4xl font-semibold text-gray-900">{product.name}</h1>
-            <p className="text-sm text-gray-500 mt-1">{categoryName || 'Loading category...'}</p>
+    <div className="bg-gray-50 min-h-screen pb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        
+        {/* Breadcrumb / Category */}
+        <nav className="mb-8 text-sm font-medium text-gray-500">
+          <span className="hover:text-gray-900 cursor-pointer">Home</span>
+          <span className="mx-2">/</span>
+          <span className="hover:text-gray-900 cursor-pointer">{categoryName || 'Category'}</span>
+          <span className="mx-2">/</span>
+          <span className="text-gray-900">{product.name}</span>
+        </nav>
+
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+            
+            {/* Left: Image Carousel */}
+            <div className="p-8 lg:p-12 bg-gray-50/50 flex items-center justify-center border-b lg:border-b-0 lg:border-r border-gray-100">
+              <div className="w-full max-w-xl">
+                <CarouselDemo imageURLs={product.imageURLs} />
+              </div>
+            </div>
+
+            {/* Right: Product Info */}
+            <div className="p-8 lg:p-12 flex flex-col">
+              <div className="mb-auto">
+                <div className="mb-2">
+                  <span className="inline-block px-3 py-1 rounded-full bg-[#febd69]/20 text-yellow-800 text-xs font-bold uppercase tracking-wide">
+                    {categoryName}
+                  </span>
+                </div>
+                
+                <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
+                  {product.name}
+                </h1>
+                
+                <div className="flex items-baseline gap-4 mb-8 border-b border-gray-100 pb-8">
+                  <span className="text-4xl font-bold text-gray-900">${product.price}</span>
+                  <span className="text-green-600 font-medium bg-green-50 px-2 py-1 rounded text-sm">In Stock</span>
+                </div>
+
+                <div className="prose prose-gray max-w-none mb-8 text-gray-600">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">About this item</h3>
+                  <p className="leading-relaxed">{product.description}</p>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-8 border-t border-gray-100">
+                <ProductInteractions product={product} />
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-4xl font-bold text-gray-900">${product.price}</span>
-          </div>
-          <ProductInteractions product={product} />
         </div>
-      </div>
-      <div className="max-w-7xl mx-auto px-5 pb-12 -mt-15">
-        <ProductReviews 
-          productId={product.id}
-          productName={product.name}
-          productRating={product.rating || 0}
-        />
+
+        {/* Reviews Section */}
+        <div className="mt-16">
+          <ProductReviews 
+            productId={product.id}
+            productName={product.name}
+            productRating={product.rating || 0}
+          />
+        </div>
       </div>
     </div>
   );
