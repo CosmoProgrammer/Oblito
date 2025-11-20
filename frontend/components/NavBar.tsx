@@ -1,9 +1,39 @@
-import React, { useState } from 'react';
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import SearchBar from './SearchBar';
 import Link from 'next/link';
 
+interface Category {
+    id: string;
+    name: string;
+}
+
 const Navbar = () => {
-    const categories=['Electronics', 'Books', 'Clothing', 'Home', 'Toys']
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // Fetch categories from backend
+        async function fetchCategories() {
+            try {
+                const res = await fetch('http://localhost:8000/categories', {
+                    credentials: 'include',
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setCategories(data);
+                    console.log("Categories loaded:", data);
+                }
+            } catch (err) {
+                console.error('Error fetching categories:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchCategories();
+    }, []);
+
     const onFilterChange = (searchTerm: string, categories: string[]) => {
         // Handle filter change logic here
         console.log('Search Term:', searchTerm);
@@ -19,21 +49,23 @@ const Navbar = () => {
             <div className="text-2xl font-bold text-[#febd69] ml-2">Oblito</div>
             </Link>
             
-            <SearchBar 
-                onFilterChange={onFilterChange} 
-                categories={categories} 
-            />
+            {categories.length > 0 && (
+                <SearchBar 
+                    onFilterChange={onFilterChange} 
+                    categories={categories}
+                />
+            )}
 
             <div className="flex gap-3 mr-10">
-                <a href="/profile" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded mr-1">
+                <Link href="/profile" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded px-2 py-1 whitespace-nowrap">
                     My Profile
-                </a>
-                <a href="/returns-and-orders" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded mr-1">
+                </Link>
+                <Link href="/returns-and-orders" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded px-2 py-1 whitespace-nowrap">
                     Returns & Orders
-                </a>
-                <a href="/cart" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded">
+                </Link>
+                <Link href="/cart" className="text-sm font-medium hover:outline hover:outline-[#febd69] hover:rounded px-2 py-1 whitespace-nowrap">
                     Cart 
-                </a>
+                </Link>
             </div>
         </nav>
     );

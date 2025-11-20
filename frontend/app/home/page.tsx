@@ -3,6 +3,7 @@
 import ProductCard from "@/components/ProductCard";
 import { useEffect, useState } from "react";
 import { setCategoryMap } from "@/app/utils/categoryMap";
+import { useSearchParams } from "next/navigation";
 import {
   Pagination,
   PaginationContent,
@@ -17,9 +18,9 @@ interface Product {
   id: string;
   name: string;
   description: string;
-  price: string; // This is a string, like "12.99"
-  stockQuantity: string; // This is also a string
-  imageURLs: string[]; // This is an array of strings
+  price: string;
+  stockQuantity: string;
+  imageURLs: string[];
   categoryId: string;
   creatorId: string;
   createdAt: string;
@@ -32,10 +33,16 @@ interface PaginationData {
   limit: number;
 }
 
+interface Category {
+  id: string;
+  name: string;
+}
+
 export default function HomePage() {
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [pagination, setPagination] = useState<PaginationData>({
     totalCount: 0,
     totalPages: 1,
@@ -43,6 +50,11 @@ export default function HomePage() {
     limit: 12,
   });
   const [loading, setLoading] = useState(true);
+
+  // Get search and category filters from URL params
+  const searchTerm = searchParams.get("search") || "";
+  const categoriesParam = searchParams.get("categories") || "";
+  const selectedCategories = categoriesParam ? categoriesParam.split(",") : [];
 
   useEffect(() => {
     async function fetchUser() {
@@ -58,10 +70,9 @@ export default function HomePage() {
         }
       } catch (err) {
         console.error("Error fetching user:", err);
-      } finally {
-        setLoading(false);
       }
     }
+
     async function fetchCategories() {
       try {
         const res = await fetch(`http://localhost:8000/categories`, {
@@ -72,42 +83,59 @@ export default function HomePage() {
           const data = await res.json();
           console.log("Categories fetched:", data);
           setCategories(data);
-          // Store the category map for global use
           setCategoryMap(data);
         }
       } catch (err) {
         console.error("Error fetching categories:", err);
-      } finally {
-        setLoading(false);
       }
     }
+
     fetchUser();
-    fetchProducts(1);
     fetchCategories();
+    fetchProducts(1);
   }, []);
 
+  // Refetch products when search params change
+  useEffect(() => {
+    fetchProducts(1);
+  }, [searchTerm, categoriesParam]);
+
   async function fetchProducts(page: number = 1) {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `http://localhost:8000/products?page=${page}&limit=${pagination.limit}`,
-          {
-            credentials: "include",
-            method: "GET",
-          }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setProducts(data.products);
-          setPagination(data.pagination);
-          console.log("Fetched products:", data);
-        }
-      } catch (err) {
-        console.error("Error fetching products:", err);
-      } finally {
-        setLoading(false);
+    setLoading(true);
+    try {
+      let url = `http://localhost:8000/products?page=${page}&limit=${pagination.limit}`;
+
+      // Add search parameter if exists
+      if (searchTerm.trim()) {
+        url += `&search=${encodeURIComponent(searchTerm)}`;
       }
+
+      // Add category parameters if exist
+      if (selectedCategories.length > 0) {
+        selectedCategories.forEach((catId) => {
+          url += `&categories=${encodeURIComponent(catId)}`;
+        });
+      }
+
+      console.log("🌐 Fetching from:", url);
+
+      const res = await fetch(url, {
+        credentials: "include",
+        method: "GET",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(data.products);
+        setPagination(data.pagination);
+        console.log("✅ Fetched products:", data);
+      }
+    } catch (err) {
+      console.error("Error fetching products:", err);
+    } finally {
+      setLoading(false);
     }
+  }
 
   const handlePageChange = (page: number) => {
     fetchProducts(page);
@@ -210,6 +238,11 @@ export default function HomePage() {
     return items;
   };
 
+  // Get category names for display
+  const getCategoryNames = (names: string[]) => {
+    return names.join(", ");
+  };
+
   return (
     <div className="max-w-[1500px] mx-auto p-[20px] grow bg-[#FFE4C4] w-full">
       <h1>Home</h1>
@@ -221,10 +254,41 @@ export default function HomePage() {
         <p>You are not logged in.</p>
       )}
 
+      {/* Active Filters Display */}
+      {(searchTerm || selectedCategories.length > 0) && (
+        <div className="mb-6 p-4 bg-white rounded-lg shadow-sm">
+          <h3 className="font-semibold text-gray-900 mb-2">Active Filters:</h3>
+          {searchTerm && (
+            <p className="text-sm text-gray-700">
+              Search: <span className="font-medium">{searchTerm}</span>
+            </p>
+          )}
+          {selectedCategories.length > 0 && (
+            <p className="text-sm text-gray-700">
+              Categories:{" "}
+              <span className="font-medium">
+                {getCategoryNames(selectedCategories)}
+              </span>
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Products Grid */}
       <div className="grid grid-cols-4 gap-[24px] justify-items-center p-[20px]">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
+        {products.length > 0 ? (
+          products.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))
+        ) : (
+          <div className="col-span-4 text-center py-12">
+            <p className="text-gray-600 text-lg">
+              {searchTerm || selectedCategories.length > 0
+                ? "No products found. Try adjusting your filters."
+                : "No products available."}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Pagination Controls */}

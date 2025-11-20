@@ -4,7 +4,11 @@ import { ProductInteractions } from './ProductInteractions';
 import { ProductReviews } from './ProductReview';
 import { useEffect, useState } from 'react';
 import { use } from 'react';
-import { getCategoryName } from '@/app/utils/categoryMap';
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 type Product = {
   id: string;
@@ -15,17 +19,39 @@ type Product = {
   [key: string]: any;
 };
 
+const API_BASE_URL = "http://localhost:8000";
+
 export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [product, setProduct] = useState<Product | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [categoryName, setCategoryName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    async function fetchCategories() {
+      try {
+        console.log("📂 Fetching categories...");
+        const res = await fetch(`${API_BASE_URL}/categories`, {
+          credentials: 'include',
+          method: 'GET',
+        });
+        const data = await res.json();
+        console.log("✅ Categories fetched:", data);
+        
+        if (res.ok) {
+          setCategories(data);
+        }
+      } catch (err) {
+        console.error('❌ Error fetching categories:', err);
+      }
+    }
+
     async function fetchProduct() {
       try {
-        const res = await fetch(`http://localhost:8000/products/${id}`, {
+        console.log("📦 Fetching product:", id);
+        const res = await fetch(`${API_BASE_URL}/products/${id}`, {
           credentials: 'include',
           method: 'GET',
         });
@@ -38,9 +64,6 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
           
           if (productData && productData.id) {
             setProduct(productData);
-            // Get category name from the utility
-            const name = getCategoryName(productData.categoryId);
-            setCategoryName(name);
           } else {
             setError("Invalid product data received");
           }
@@ -48,14 +71,30 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
           setError(`Failed to load product: ${data.message || 'Unknown error'}`);
         }
       } catch (err) {
-        console.error('Error fetching products:', err);
+        console.error('❌ Error fetching product:', err);
         setError("Error loading product");
       } finally {
         setLoading(false);
       }
     }
+
+    fetchCategories();
     fetchProduct();
   }, [id]);
+
+  // Update category name when product or categories change
+  useEffect(() => {
+    if (product && categories.length > 0) {
+      const category = categories.find(cat => cat.id === product.categoryId);
+      if (category) {
+        setCategoryName(category.name);
+        console.log("🏷️ Category name set to:", category.name);
+      } else {
+        console.warn("⚠️ Category not found for ID:", product.categoryId);
+        setCategoryName("Unknown Category");
+      }
+    }
+  }, [product, categories]);
 
   if (loading) {
     return <div className="text-center py-12">Loading...</div>;
@@ -87,7 +126,11 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-5 pb-12 -mt-15">
-        <ProductReviews />
+        <ProductReviews 
+          productId={product.id}
+          productName={product.name}
+          productRating={product.rating || 0}
+        />
       </div>
     </div>
   );

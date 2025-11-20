@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 interface SearchCategoriesProps {
     categories: string[];
@@ -10,9 +10,21 @@ interface SearchCategoriesProps {
 
 const SearchCategories: React.FC<SearchCategoriesProps> = ({ categories, selectedCategories, onCategoryChange }) => { 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const searchBoxRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchBoxRef.current && !searchBoxRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     return (
-        <div className="relative">
+        <div className="relative" ref={searchBoxRef}>
             {/* Toggle button */}
             <button 
                 type="button" 

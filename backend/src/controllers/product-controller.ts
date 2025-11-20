@@ -169,12 +169,13 @@ export const getQuickSearchResults = async (req: any, res: any) => {
         const { q } = quickSearchSchema.parse(req.params);
 
         const results = await db.select({
-                id: products.id,
+                id: shopInventory.id,
                 name: products.name,
                 imageURLs: products.imageURLs,
                 categoryId: products.categoryId
             })
             .from(products)
+            .innerJoin(shopInventory, eq(shopInventory.productId, products.id))
             .where(ilike(products.name, `%${q}%`)) 
             .limit(7);
 
