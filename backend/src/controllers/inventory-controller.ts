@@ -270,3 +270,43 @@ export const handleManualStockUpdate = async (req: any, res: any) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 }
+
+export const handleWarehouseManualStockUpdate = async (req: any, res: any) => {
+    try {
+        const user = req.user as { id: string, role: 'retailer' | 'wholesaler' };
+        const { warehouseInventoryId } = req.params;
+        const { quantity } = manualStockUpdateSchema.parse(req.body);
+
+        const warehouse = await db.query.warehouses.findFirst({
+            where: eq(warehouses.ownerId, user.id),
+        });
+
+        if (!warehouse) {
+            return res.status(404).json({ message: "Wholesaler warehouse not found." });
+        }
+
+        const itemToUpdate = await db.query.warehouseInventory.findFirst({
+            where: and(
+                eq(warehouseInventory.id, warehouseInventoryId),
+                eq(warehouseInventory.warehouseId, warehouse.id)
+            ),
+        });
+
+        if (!itemToUpdate) {
+            return res.status(404).json({ message: "Inventory item not found or you do not have permission to update it." });
+        }
+
+        await db.update(warehouseInventory)
+            .set({ stockQuantity: sql`${warehouseInventory.stockQuantity} + ${quantity}` })
+            .where(eq(warehouseInventory.id, warehouseInventoryId));
+
+        res.json({ message: "Stock updated successfully." });
+
+    } catch (e) {
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error updating stock:', e);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};

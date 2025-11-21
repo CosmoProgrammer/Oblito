@@ -1,13 +1,15 @@
 import { z } from 'zod';
 
 import db from '../db/index.js';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 import { orders } from '../db/schema/orders.js';
 import { shops } from '../db/schema/shops.js';
 import { warehouses } from '../db/schema/warehouses.js';
 import { orderItems } from '../db/schema/orderItems.js';
 import { users } from '../db/schema/users.js';
+import { shopInventory } from '../db/schema/shopInventory.js';
+import { warehouseInventory } from '../db/schema/warehouseInventory.js';
 
 import { updateOrderItemStatusSchema, updatePaymentStatusSchema, orderIdParamSchema, orderItemIdParamSchema } from '../validation/seller-order-validation.js';
 
@@ -94,54 +96,88 @@ export const handleUpdateOrderItemStatus = async (req: any, res: any) => {
         const { orderItemId } = orderItemIdParamSchema.parse(req.params);
         const { status } = updateOrderItemStatusSchema.parse(req.body);
 
-        const item = await db.query.orderItems.findFirst({
-            where: eq(orderItems.id, orderItemId),
-            with: {
-                order: true
+        await db.transaction(async (tx) => {
+            const item = await tx.query.orderItems.findFirst({
+                where: eq(orderItems.id, orderItemId),
+                with: {
+                    order: true
+                }
+            });
+
+            if (!item) {
+                return res.status(404).json({ message: "Order item not found" });
             }
-        });
 
-        if (!item) {
-            return res.status(404).json({ message: "Order item not found" });
-        }
-
-        // Authorization check
-        if (user.role === 'retailer') {
-            const shop = await db.query.shops.findFirst({ where: eq(shops.ownerId, user.id) });
-            if (item.order.shopId !== shop?.id) {
-                return res.status(403).json({ message: "Unauthorized to update this item" });
+            // Authorization check
+            if (user.role === 'retailer') {
+                const shop = await tx.query.shops.findFirst({ where: eq(shops.ownerId, user.id) });
+                if (item.order.shopId !== shop?.id) {
+                    return res.status(403).json({ message: "Unauthorized to update this item" });
+                }
+            } else if (user.role === 'wholesaler') {
+                const warehouse = await tx.query.warehouses.findFirst({ where: eq(warehouses.ownerId, user.id) });
+                if (item.order.warehouseId !== warehouse?.id) {
+                    return res.status(403).json({ message: "Unauthorized to update this item" });
+                }
+            } else {
+                 return res.status(403).json({ message: "Unauthorized" });
             }
-        } else if (user.role === 'wholesaler') {
-            const warehouse = await db.query.warehouses.findFirst({ where: eq(warehouses.ownerId, user.id) });
-            if (item.order.warehouseId !== warehouse?.id) {
-                return res.status(403).json({ message: "Unauthorized to update this item" });
-            }
-        } else {
-             return res.status(403).json({ message: "Unauthorized" });
-        }
-        
-        await db.update(orderItems)
-            .set({ status: status })
-            .where(eq(orderItems.id, orderItemId));
+            
+            await tx.update(orderItems)
+                .set({ status: status })
+                .where(eq(orderItems.id, orderItemId));
+            
+            if (status === 'delivered' && item.order.orderType === 'wholesale') {
+                const retailerId = item.order.customerId;
+                const retailerShop = await tx.query.shops.findFirst({ where: eq(shops.ownerId, retailerId) });
+                if (!retailerShop) throw new Error("Retailer's shop not found");
 
-        // Update overall order status
-        const orderId = item.orderId;
-        const allItems = await db.query.orderItems.findMany({
-            where: eq(orderItems.orderId, orderId)
-        });
+                const wInventoryItem = await tx.query.warehouseInventory.findFirst({ where: eq(warehouseInventory.id, item.warehouseInventoryId!) });
+                if (!wInventoryItem) throw new Error("Warehouse inventory item not found");
 
-        const allDelivered = allItems.every(i => i.status === 'delivered');
-        if (allDelivered) {
-            await db.update(orders).set({ status: 'delivered' }).where(eq(orders.id, orderId));
-        } else {
-            const allProcessedOrMore = allItems.every(i => i.status === 'processed' || i.status === 'shipped' || i.status === 'delivered');
-            if (allProcessedOrMore) {
-                const currentOrder = await db.query.orders.findFirst({ where: eq(orders.id, orderId), columns: { status: true } });
-                if (currentOrder && currentOrder.status === 'pending') {
-                    await db.update(orders).set({ status: 'processed' }).where(eq(orders.id, orderId));
+                const existingShopItem = await tx.query.shopInventory.findFirst({
+                    where: and(
+                        eq(shopInventory.shopId, retailerShop.id),
+                        eq(shopInventory.productId, wInventoryItem.productId)
+                    )
+                });
+
+                if (existingShopItem) {
+                    await tx.update(shopInventory)
+                        .set({ stockQuantity: sql`${shopInventory.stockQuantity} + ${item.quantity}` })
+                        .where(eq(shopInventory.id, existingShopItem.id));
+                } else {
+                    await tx.insert(shopInventory).values({
+                        shopId: retailerShop.id,
+                        productId: wInventoryItem.productId,
+                        stockQuantity: item.quantity.toString(),
+                        price: wInventoryItem.price, 
+                        isProxyItem: false,
+                        warehouseInventoryId: item.warehouseInventoryId,
+                    });
                 }
             }
-        }
+
+
+            // Update overall order status
+            const orderId = item.orderId;
+            const allItems = await tx.query.orderItems.findMany({
+                where: eq(orderItems.orderId, orderId)
+            });
+
+            const allDelivered = allItems.every(i => i.status === 'delivered');
+            if (allDelivered) {
+                await tx.update(orders).set({ status: 'delivered' }).where(eq(orders.id, orderId));
+            } else {
+                const allProcessedOrMore = allItems.every(i => i.status === 'processed' || i.status === 'shipped' || i.status === 'delivered');
+                if (allProcessedOrMore) {
+                    const currentOrder = await tx.query.orders.findFirst({ where: eq(orders.id, orderId), columns: { status: true } });
+                    if (currentOrder && currentOrder.status === 'pending') {
+                        await tx.update(orders).set({ status: 'processed' }).where(eq(orders.id, orderId));
+                    }
+                }
+            }
+        });
 
         res.json({ message: "Order item status updated successfully" });
 
