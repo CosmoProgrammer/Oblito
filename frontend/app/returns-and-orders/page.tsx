@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Trash2, Package, Truck, CheckCircle, Clock, XCircle, Search, ArrowRight } from "lucide-react";
+import { Trash2, Package, Truck, CheckCircle, Clock, XCircle, Search, ArrowRight, Undo2 } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -25,6 +25,9 @@ type OrderItem = {
   image?: string;
   imageUrl?: string;
   shopName?: string;
+  status?: "pending" | "processed" | "shipped" | "delivered" | "cancelled" | "to_return" | "returned";
+  orderNumber?: string;
+  date?: string | Date;
 };
 
 type Order = {
@@ -34,29 +37,29 @@ type Order = {
   createdAt?: string;
   total?: number;
   totalAmount?: string | number;
-  status: "pending" | "processed" | "delivered" | "cancelled";
+  status: "pending" | "processed" | "shipped" | "delivered" | "cancelled";
+  overallStatus?: "pending" | "processed" | "shipped" | "delivered" | "cancelled";
   orderItems?: OrderItem[];
   items?: OrderItem[];
   paymentMethod?: string;
   shops?: Set<string>;
 };
 
-type ReturnRequest = {
-  id: string;
-  orderNumber: string;
-  itemName: string;
-  reason: string;
-  status: "pending" | "approved" | "rejected" | "refunded";
-  requestDate: string;
-  refundAmount: number;
-};
-
 const API_BASE_URL = "http://localhost:8000";
 const ORDERS_PER_PAGE = 10;
 
+const getOverallOrderStatus = (items: OrderItem[]): "pending" | "processed" | "shipped" | "delivered" | "cancelled" => {
+    const statuses = items.map(item => item.status);
+    if (statuses.every(s => s === 'cancelled')) return 'cancelled';
+    if (statuses.every(s => s === 'delivered' || s === 'returned')) return 'delivered';
+    if (statuses.some(s => s === 'shipped')) return 'shipped';
+    if (statuses.some(s => s === 'processed')) return 'processed';
+    return 'pending';
+};
+
 export default function ReturnsAndOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [returns, setReturns] = useState<ReturnRequest[]>([]);
+  const [returnRequests, setReturnRequests] = useState<OrderItem[]>([]);
   const [activeTab, setActiveTab] = useState<"orders" | "returns">("orders");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +73,6 @@ export default function ReturnsAndOrdersPage() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch orders from backend
       const ordersRes = await fetch(`${API_BASE_URL}/orders`, {
         credentials: "include",
         headers: {
@@ -81,55 +83,48 @@ export default function ReturnsAndOrdersPage() {
 
       if (ordersRes.ok) {
         const ordersData = await ordersRes.json();
-        console.log("Orders response:", ordersData);
-
-        // Handle both array and object responses
         const ordersList = Array.isArray(ordersData) ? ordersData : ordersData.orders || [];
         
-        // Group orders by orderId (consolidate multiple seller orders)
-        const ordersMap = new Map<string, Order>();
+        const returns: OrderItem[] = [];
 
-        ordersList.forEach((order: any) => {
-          const itemsArray = order.orderItems || order.items || [];
+        const transformedOrders: Order[] = ordersList.map((order: any) => {
+          const itemsArray = order.orderItems || [];
           
-          // Transform items with proper mapping
-          const transformedItems = Array.isArray(itemsArray)
-            ? itemsArray.map((item: any) => ({
+          const transformedItems: OrderItem[] = itemsArray.map((item: any) => {
+              const orderItem: OrderItem = {
                 id: item.id,
-                orderId: item.orderId,
+                orderId: order.id,
                 shopInventoryId: item.shopInventoryId,
-                quantity: parseInt(item.quantity || 1),
-                name: item.shopInventory?.product?.name || item.productName || "Product",
-                price: parseFloat(item.priceAtPurchase || 0),
-                image: item.shopInventory?.product?.imageURLs?.[0] || item.imageUrl || "https://placehold.co/80x80",
+                quantity: parseInt(item.quantity, 10) || 1,
+                name: item.shopInventory?.product?.name || "Product",
+                price: parseFloat(item.priceAtPurchase) || 0,
+                image: item.shopInventory?.product?.imageURLs?.[0] || "https://placehold.co/80x80",
                 shopName: order.shop?.name || "Unknown Shop",
-              }))
-            : [];
-
-          const orderId = order.id;
-
-          if (ordersMap.has(orderId)) {
-            // Order already exists, merge items
-            const existingOrder = ordersMap.get(orderId)!;
-            existingOrder.orderItems = [...(existingOrder.orderItems || []), ...transformedItems];
-          } else {
-            // New order
-            ordersMap.set(orderId, {
-              id: orderId,
-              orderNumber: order.orderNumber || `ORD-${orderId?.slice(0, 8).toUpperCase()}`,
-              date: order.date || order.createdAt || new Date().toISOString(),
-              total: parseFloat(order.totalAmount || order.total || 0),
-              status: order.status || "pending",
-              paymentMethod: order.paymentMethod,
-              orderItems: transformedItems,
+                status: item.status,
+                orderNumber: `ORD-${order.id?.slice(0, 8).toUpperCase()}`,
+                date: order.createdAt || new Date().toISOString(),
+              };
+              if (item.status === 'to_return' || item.status === 'returned') {
+                returns.push(orderItem);
+              }
+              return orderItem;
             });
-          }
+
+          return {
+            id: order.id,
+            orderNumber: `ORD-${order.id?.slice(0, 8).toUpperCase()}`,
+            date: order.createdAt || new Date().toISOString(),
+            total: parseFloat(order.totalAmount || 0),
+            status: order.status || "pending",
+            overallStatus: getOverallOrderStatus(transformedItems),
+            paymentMethod: order.paymentMethod,
+            orderItems: transformedItems,
+          };
         });
 
-        // Convert map to array
-        const consolidatedOrders = Array.from(ordersMap.values());
-        setOrders(consolidatedOrders);
-        setCurrentPage(1); // Reset to first page
+        setOrders(transformedOrders);
+        setReturnRequests(returns);
+        setCurrentPage(1);
       } else {
         setError("Failed to load orders");
       }
@@ -161,8 +156,6 @@ export default function ReturnsAndOrdersPage() {
       const data = await res.json();
 
       if (res.ok) {
-        // Refresh the orders list instead of just removing from state
-        // This ensures we get the updated status from backend
         await fetchOrdersAndReturns();
         setError(null);
       } else {
@@ -178,17 +171,47 @@ export default function ReturnsAndOrdersPage() {
     }
   };
 
+  const handleReturnItem = async (orderItemId: string) => {
+    if (!confirm("Are you sure you want to request a return for this item?")) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/returns/request`, {
+            method: "POST",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ orderItemId }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            alert("Return requested successfully!");
+            fetchOrdersAndReturns();
+        } else {
+            throw new Error(data.message || "Failed to request return.");
+        }
+    } catch (err: any) {
+        alert(err.message);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "delivered":
       case "approved":
-      case "refunded":
+      case "returned":
         return "text-green-700 bg-green-50 border-green-100";
       case "processed":
       case "shipped":
         return "text-blue-700 bg-blue-50 border-blue-100";
       case "pending":
         return "text-yellow-700 bg-yellow-50 border-yellow-100";
+      case "to_return":
+        return "text-purple-700 bg-purple-50 border-purple-100";
       case "cancelled":
       case "rejected":
         return "text-red-700 bg-red-50 border-red-100";
@@ -208,16 +231,14 @@ export default function ReturnsAndOrdersPage() {
         return <Clock className="w-4 h-4 mr-1.5" />;
       case "cancelled":
         return <XCircle className="w-4 h-4 mr-1.5" />;
+      case "to_return":
+      case "returned":
+        return <Undo2 className="w-4 h-4 mr-1.5" />;
       default:
         return <Package className="w-4 h-4 mr-1.5" />;
     }
   };
 
-  const canCancelOrder = (status: string) => {
-    return status === "pending";
-  };
-
-  // Pagination logic
   const totalPages = Math.ceil(orders.length / ORDERS_PER_PAGE);
   const startIndex = (currentPage - 1) * ORDERS_PER_PAGE;
   const endIndex = startIndex + ORDERS_PER_PAGE;
@@ -231,8 +252,8 @@ export default function ReturnsAndOrdersPage() {
   const renderPaginationItems = () => {
     const items = [];
     const maxVisible = 5;
+    const totalP = activeTab === 'orders' ? totalPages : Math.ceil(returnRequests.length / ORDERS_PER_PAGE);
 
-    // Previous button
     items.push(
       <PaginationItem key="prev">
         <PaginationPrevious
@@ -242,14 +263,12 @@ export default function ReturnsAndOrdersPage() {
       </PaginationItem>
     );
 
-    // Calculate page range
     let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    let endPage = Math.min(totalP, startPage + maxVisible - 1);
     if (endPage - startPage < maxVisible - 1) {
       startPage = Math.max(1, endPage - maxVisible + 1);
     }
 
-    // First page
     if (startPage > 1) {
       items.push(
         <PaginationItem key={1}>
@@ -261,7 +280,6 @@ export default function ReturnsAndOrdersPage() {
       }
     }
 
-    // Middle pages
     for (let page = startPage; page <= endPage; page++) {
       items.push(
         <PaginationItem key={page}>
@@ -276,30 +294,30 @@ export default function ReturnsAndOrdersPage() {
       );
     }
 
-    // Last page
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) {
+    if (endPage < totalP) {
+      if (endPage < totalP - 1) {
         items.push(<PaginationItem key="ellipsis-end"><PaginationEllipsis /></PaginationItem>);
       }
       items.push(
-        <PaginationItem key={totalPages}>
-          <PaginationLink onClick={() => handlePageChange(totalPages)} className="cursor-pointer hover:bg-gray-100 rounded-md">{totalPages}</PaginationLink>
+        <PaginationItem key={totalP}>
+          <PaginationLink onClick={() => handlePageChange(totalP)} className="cursor-pointer hover:bg-gray-100 rounded-md">{totalP}</PaginationLink>
         </PaginationItem>
       );
     }
 
-    // Next button
     items.push(
       <PaginationItem key="next">
         <PaginationNext
-          onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
-          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-gray-100 rounded-md"}
+          onClick={() => currentPage < totalP && handlePageChange(currentPage + 1)}
+          className={currentPage === totalP ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-gray-100 rounded-md"}
         />
       </PaginationItem>
     );
 
     return items;
   };
+  
+  const paginatedReturns = returnRequests.slice(startIndex, endIndex);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -310,7 +328,6 @@ export default function ReturnsAndOrdersPage() {
             <p className="text-gray-500 mt-2">Track, manage and return your orders</p>
           </div>
           
-          {/* Search Orders */}
           <div className="relative w-full md:w-72">
             <input 
               type="text" 
@@ -330,7 +347,6 @@ export default function ReturnsAndOrdersPage() {
           </div>
         )}
 
-        {/* Tab Navigation */}
         <div className="flex gap-2 mb-8 border-b border-gray-200">
           <button
             onClick={() => setActiveTab("orders")}
@@ -353,7 +369,7 @@ export default function ReturnsAndOrdersPage() {
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            Return Requests (0)
+            Return Requests ({returnRequests.length})
             {activeTab === "returns" && (
               <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-700"></div>
             )}
@@ -363,7 +379,7 @@ export default function ReturnsAndOrdersPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="w-10 h-10 border-4 border-gray-700 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-500 font-medium">Loading your orders...</p>
+            <p className="text-gray-500 font-medium">Loading your data...</p>
           </div>
         ) : activeTab === "orders" ? (
           <div className="space-y-6">
@@ -382,7 +398,6 @@ export default function ReturnsAndOrdersPage() {
                     key={order.id}
                     className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md"
                   >
-                    {/* Order Header */}
                     <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                       <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 text-sm">
                         <div>
@@ -408,18 +423,23 @@ export default function ReturnsAndOrdersPage() {
                       </div>
                       
                       <div className="flex items-center gap-3 w-full sm:w-auto">
+                        {order.overallStatus === 'pending' && (
+                            <Button variant="destructive" size="sm" onClick={() => handleCancelOrder(order.id, order.orderNumber!)}>
+                                <XCircle className="w-4 h-4 mr-2" />
+                                Cancel Order
+                            </Button>
+                        )}
                         <span
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${getStatusColor(
-                            order.status
+                            order.overallStatus!
                           )}`}
                         >
-                          {getStatusIcon(order.status)}
-                          {order.status}
+                          {getStatusIcon(order.overallStatus!)}
+                          {order.overallStatus}
                         </span>
                       </div>
                     </div>
 
-                    {/* Order Items */}
                     <div className="p-6">
                       <div className="space-y-6">
                         {order.orderItems && order.orderItems.length > 0 ? (
@@ -458,6 +478,20 @@ export default function ReturnsAndOrdersPage() {
                                         <p className="text-sm font-bold text-gray-900 mt-2">
                                           ${item.price ? (parseFloat(String(item.price)) * parseInt(String(item.quantity))).toFixed(2) : "N/A"}
                                         </p>
+                                        <div className="mt-2 flex gap-2">
+                                            {item.status !== 'to_return' && item.status !== 'returned' && item.status !== 'cancelled' && (
+                                                <Link href={`/track-order?orderId=${order.id}&orderItemId=${item.id}`}>
+                                                <Button variant="outline" size="sm" className="rounded-lg">
+                                                    Track Package
+                                                </Button>
+                                                </Link>
+                                            )}
+                                            {item.status === "delivered" && (
+                                                <Button variant="outline" size="sm" className="rounded-lg" onClick={() => handleReturnItem(item.id)}>
+                                                    Return Item
+                                                </Button>
+                                            )}
+                                        </div>
                                       </div>
                                       <div className="hidden sm:block">
                                         <Link href={`/product/${item.shopInventoryId}`}>
@@ -476,41 +510,9 @@ export default function ReturnsAndOrdersPage() {
                           <p className="text-gray-500 text-sm italic">No items details available</p>
                         )}
                       </div>
-
-                      <div className="mt-6 pt-6 border-t border-gray-100 flex flex-wrap gap-3 justify-end">
-                        <Link href={`/track-order?orderNumber=${order.orderNumber}`}>
-                          <Button variant="outline" className="rounded-xl border-gray-200 hover:bg-gray-50">
-                            Track Package
-                          </Button>
-                        </Link>
-                        
-                        {canCancelOrder(order.status) ? (
-                          <Button
-                            variant="destructive"
-                            onClick={() => handleCancelOrder(order.id, order.orderNumber || "")}
-                            disabled={loading}
-                            className="rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 shadow-none"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Cancel Order
-                          </Button>
-                        ) : order.status === "cancelled" ? (
-                          <Button variant="ghost" disabled className="text-gray-400">
-                            Order Cancelled
-                          </Button>
-                        ) : (
-                          order.status === "delivered" && (
-                            <Button variant="outline" disabled className="rounded-xl opacity-50 cursor-not-allowed">
-                              Return Items
-                            </Button>
-                          )
-                        )}
-                      </div>
                     </div>
                   </div>
                 ))}
-
-                {/* Pagination Controls */}
                 {totalPages > 1 && (
                   <div className="flex justify-center mt-12">
                     <Pagination>
@@ -518,23 +520,60 @@ export default function ReturnsAndOrdersPage() {
                     </Pagination>
                   </div>
                 )}
-
-                {/* Pagination Info */}
-                <div className="text-center text-gray-500 text-sm mt-4">
-                  Showing {startIndex + 1}-{Math.min(endIndex, orders.length)} of {orders.length} orders
-                </div>
               </>
             )}
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-12 text-center">
-              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-200">
-                <Package className="w-8 h-8 text-gray-400" />
+            {returnRequests.length === 0 ? (
+              <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-12 text-center">
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-200">
+                  <Undo2 className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">No return requests</h3>
+                <p className="text-gray-500">You haven't requested any returns yet.</p>
               </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2">No returns yet</h3>
-              <p className="text-gray-500">You don't have any active return requests.</p>
-            </div>
+            ) : (
+              <>
+                {paginatedReturns.map((item) => (
+                  <div key={item.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex gap-4 sm:gap-6 items-start">
+                      <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
+                        <img src={item.image} alt={item.name} className="w-full h-full object-cover"/>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row justify-between items-start">
+                          <div>
+                            <Link href={`/product/${item.shopInventoryId}`} className="text-base font-bold text-gray-900 hover:text-gray-700 transition-colors line-clamp-1">
+                              {item.name}
+                            </Link>
+                            <p className="text-sm text-gray-500 mt-1">Order #: {item.orderNumber}</p>
+                          </div>
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${getStatusColor(item.status!)}`}>
+                            {getStatusIcon(item.status!)}
+                            {item.status!.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-2">Quantity: {item.quantity}</p>
+                        <p className="text-sm font-bold text-gray-900 mt-2">
+                          ${item.price ? (parseFloat(String(item.price)) * parseInt(String(item.quantity))).toFixed(2) : "N/A"}
+                        </p>
+                         <p className="text-xs text-gray-400 mt-1">
+                            Return requested for order placed on {new Date(item.date!).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric"})}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {Math.ceil(returnRequests.length / ORDERS_PER_PAGE) > 1 && (
+                  <div className="flex justify-center mt-12">
+                    <Pagination>
+                      <PaginationContent>{renderPaginationItems()}</PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

@@ -61,7 +61,9 @@ const API_BASE_URL = "http://localhost:8000";
 
 function getStatusColorClass(status: string) {
     switch (status) {
-        case 'delivered': return 'bg-green-100 text-green-600 border-green-200';
+        case 'delivered':
+        case 'returned':
+            return 'bg-green-100 text-green-600 border-green-200';
         case 'shipped': return 'bg-indigo-100 text-indigo-600 border-indigo-200';
         case 'processed': return 'bg-blue-100 text-blue-600 border-blue-200';
         case 'pending': return 'bg-yellow-100 text-yellow-600 border-yellow-200';
@@ -79,6 +81,7 @@ export default function WholesalerDashboard() {
     const [expandedOrders, setExpandedOrders] = useState<string[]>([]);
     const [productToRestock, setProductToRestock] = useState<InventoryItem | null>(null);
     const [restockQuantity, setRestockQuantity] = useState(1);
+    const [userProfile, setUserProfile] = useState<any>(null); // State to store user profile
 
     const [summaryStats, setSummaryStats] = useState({
         totalSales: 0,
@@ -91,20 +94,24 @@ export default function WholesalerDashboard() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [ordersRes, inventoryRes] = await Promise.all([
+            const [ordersRes, inventoryRes, userProfileRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/seller-orders`, { credentials: 'include' }),
                 fetch(`${API_BASE_URL}/inventory`, { credentials: 'include' }),
+                fetch(`${API_BASE_URL}/me`, { credentials: 'include' }) // Fetch user profile
             ]);
 
-            if (!ordersRes.ok || !inventoryRes.ok) {
+            if (!ordersRes.ok || !inventoryRes.ok || !userProfileRes.ok) {
                 throw new Error('Failed to fetch dashboard data');
             }
 
             const ordersData: Order[] = await ordersRes.json();
             const inventoryData: { products: InventoryItem[] } = await inventoryRes.json();
+            const userProfileData = await userProfileRes.json(); // Get user profile data
             
             setOrders(ordersData);
             setInventory(inventoryData.products);
+            setUserProfile(userProfileData); // Set user profile
+
 
             let totalSales = 0;
             let pendingOrders = 0;
@@ -217,13 +224,9 @@ export default function WholesalerDashboard() {
         <h1 className="text-3xl font-bold tracking-tight">Wholesaler Dashboard</h1>
         <div className="flex items-center gap-4">
             <Button className="bg-[#febd69] hover:bg-[#f5a623] text-black font-medium" onClick={() => setAddProductOpen(true)}>+ Add Product</Button>
-            <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                <Input placeholder="Search products..." className="pl-9 w-64" />
-            </div>
             <Avatar>
-                <AvatarImage src="https://github.com/shadcn.png" alt="Wholesaler" />
-                <AvatarFallback>WS</AvatarFallback>
+                <AvatarImage src={userProfile?.profilePictureUrl || undefined} alt={userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "Wholesaler"} />
+                <AvatarFallback>{userProfile ? `${userProfile.firstName?.charAt(0)}${userProfile.lastName?.charAt(0)}` : "WS"}</AvatarFallback>
             </Avatar>
         </div>
       </div>

@@ -49,13 +49,23 @@ export default function LoginForm({ userRole }: Props) {
       if (res.ok) {
         setStatus("success");
         setMessage(data?.message || "Login succeeded");
-        console.log("Logged in user:", data);
-        if (data.user.role === 'Retailer' || data.user.role === 'Wholesaler') {
-            router.push('/dashboard');
+        
+        // Fetch user profile to get the role
+        const userRes = await fetch(`${apiBase}/me`, {
+          credentials: 'include'
+        });
+        const userData = await userRes.json();
+
+        if (userRes.ok) {
+          if (userData.role === 'retailer' || userData.role === 'wholesaler') {
+              router.push('/dashboard');
+          } else {
+              router.push('/home');
+          }
+        } else {
+          throw new Error(userData.message || "Failed to fetch user profile.");
         }
-        else {
-            router.push('/home');
-        }
+
       } else {
         setStatus("error");
         setMessage(data?.message || JSON.stringify(data) || `HTTP ${res.status}`);
