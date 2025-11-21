@@ -13,6 +13,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Filter, X } from "lucide-react";
 
 interface Product {
   id: string;
@@ -89,7 +90,7 @@ export default function HomePage() {
         console.error("Error fetching categories:", err);
       }
     }
-
+    
     fetchUser();
     fetchCategories();
     fetchProducts(1);
@@ -155,7 +156,7 @@ export default function HomePage() {
           className={
             currentPage === 1
               ? "pointer-events-none opacity-50"
-              : "cursor-pointer"
+              : "cursor-pointer hover:bg-gray-100 rounded-md"
           }
         />
       </PaginationItem>
@@ -174,7 +175,7 @@ export default function HomePage() {
         <PaginationItem key={1}>
           <PaginationLink
             onClick={() => handlePageChange(1)}
-            className="cursor-pointer"
+            className="cursor-pointer hover:bg-gray-100 rounded-md"
           >
             1
           </PaginationLink>
@@ -196,7 +197,7 @@ export default function HomePage() {
           <PaginationLink
             onClick={() => handlePageChange(page)}
             isActive={page === currentPage}
-            className="cursor-pointer"
+            className={`cursor-pointer rounded-md ${page === currentPage ? 'bg-[#febd69] text-black font-bold hover:bg-[#f5a623]' : 'hover:bg-gray-100'}`}
           >
             {page}
           </PaginationLink>
@@ -217,7 +218,7 @@ export default function HomePage() {
         <PaginationItem key={totalPages}>
           <PaginationLink
             onClick={() => handlePageChange(totalPages)}
-            className="cursor-pointer"
+            className="cursor-pointer hover:bg-gray-100 rounded-md"
           >
             {totalPages}
           </PaginationLink>
@@ -230,7 +231,7 @@ export default function HomePage() {
       <PaginationItem key="next">
         <PaginationNext
           onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
-          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-gray-100 rounded-md"}
         />
       </PaginationItem>
     );
@@ -244,67 +245,76 @@ export default function HomePage() {
   };
 
   return (
-    <div className="max-w-[1500px] mx-auto p-[20px] grow bg-[#FFE4C4] w-full">
-      <h1>Home</h1>
-      {loading && !products.length ? (
-        <p>Loading...</p>
-      ) : user ? (
-        <p>Welcome, {user}!</p>
-      ) : (
-        <p>You are not logged in.</p>
-      )}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Discover Products</h1>
+          {user && <p className="text-gray-500 mt-1">Welcome back, {user}</p>}
+        </div>
+      </div>
 
       {/* Active Filters Display */}
       {(searchTerm || selectedCategories.length > 0) && (
-        <div className="mb-6 p-4 bg-white rounded-lg shadow-sm">
-          <h3 className="font-semibold text-gray-900 mb-2">Active Filters:</h3>
-          {searchTerm && (
-            <p className="text-sm text-gray-700">
-              Search: <span className="font-medium">{searchTerm}</span>
-            </p>
-          )}
-          {selectedCategories.length > 0 && (
-            <p className="text-sm text-gray-700">
-              Categories:{" "}
-              <span className="font-medium">
-                {getCategoryNames(selectedCategories)}
-              </span>
-            </p>
-          )}
+        <div className="mb-8 bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-start gap-3">
+          <Filter className="w-5 h-5 text-[#febd69] mt-0.5 flex-shrink-0" />
+          <div className="flex-grow">
+            <h3 className="font-semibold text-gray-900 mb-2 text-sm uppercase tracking-wide">Active Filters</h3>
+            <div className="flex flex-wrap gap-2">
+              {searchTerm && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                  Search: {searchTerm}
+                </span>
+              )}
+              {selectedCategories.length > 0 && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                  Categories: {getCategoryNames(selectedCategories)}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {/* Products Grid */}
-      <div className="grid grid-cols-4 gap-[24px] justify-items-center p-[20px]">
-        {products.length > 0 ? (
-          products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))
-        ) : (
-          <div className="col-span-4 text-center py-12">
-            <p className="text-gray-600 text-lg">
-              {searchTerm || selectedCategories.length > 0
-                ? "No products found. Try adjusting your filters."
-                : "No products available."}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Pagination Controls */}
-      {pagination.totalPages > 1 && (
-        <div className="flex justify-center mt-8">
-          <Pagination>
-            <PaginationContent>{renderPaginationItems()}</PaginationContent>
-          </Pagination>
+      {loading && !products.length ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl h-[400px] animate-pulse shadow-sm border border-gray-100"></div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {products.length > 0 ? (
+            products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))
+          ) : (
+            <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <X className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
+              <p className="text-gray-500 text-center max-w-md">
+                {searchTerm || selectedCategories.length > 0
+                  ? "We couldn't find any products matching your filters. Try adjusting your search or categories."
+                  : "No products are currently available."}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Pagination Info */}
-      <div className="text-center text-gray-600 mt-4">
-        Showing page {pagination.currentPage} of {pagination.totalPages} (
-        {pagination.totalCount} total products)
-      </div>
+      {/* Pagination Controls */}
+      {pagination.totalPages > 1 && (
+        <div className="mt-16">
+          <Pagination>
+            <PaginationContent>{renderPaginationItems()}</PaginationContent>
+          </Pagination>
+          <div className="text-center text-gray-500 text-sm mt-4">
+            Showing page {pagination.currentPage} of {pagination.totalPages}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
