@@ -132,7 +132,7 @@ export const handleLogin = async (req: any, res: any) => {
         const token = generateToken(dbUser);
         setTokenCookie(res, token);
 
-        res.status(200).json({message: 'Login successful'});
+        res.status(200).json({message: 'Login successful', user: { id: dbUser.id, email: dbUser.email, firstName: dbUser.firstName, lastName: dbUser.lastName, role: dbUser.role } });
     } catch (e) {
         if (e instanceof z.ZodError) {
             return res.status(400).json({ errors: e.issues });

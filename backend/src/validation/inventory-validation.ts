@@ -6,3 +6,7 @@ export const createListingSchema = z.object({
     isProxyItem: z.boolean().optional().default(false),
     stockQuantity: z.coerce.number().int().min(0, "Stock must be 0 or more").default(0),
 });
+
+export const manualStockUpdateSchema = z.object({
+    quantity: z.coerce.number().int().positive("Quantity must be a positive integer"),
+});

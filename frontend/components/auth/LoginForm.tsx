@@ -49,7 +49,13 @@ export default function LoginForm({ userRole }: Props) {
       if (res.ok) {
         setStatus("success");
         setMessage(data?.message || "Login succeeded");
-        router.push('/home');
+        console.log("Logged in user:", data);
+        if (data.user.role === 'Retailer' || data.user.role === 'Wholesaler') {
+            router.push('/dashboard');
+        }
+        else {
+            router.push('/home');
+        }
       } else {
         setStatus("error");
         setMessage(data?.message || JSON.stringify(data) || `HTTP ${res.status}`);

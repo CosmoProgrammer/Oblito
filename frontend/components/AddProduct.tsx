@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,45 +6,134 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2 } from "lucide-react"; // Import Loader2
 
+interface Category {
+  id: string;
+  name: string;
+}
 
-const categories=['Electronics', 'Books', 'Clothing', 'Home', 'Toys'];
+const API_BASE_URL = "http://localhost:8000";
 
 export function AddProduct({ onClose }: { onClose: () => void }) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     price: "",
-    images: ["", "", "", "", ""],
+    images: [] as File[],
     isProxyItem: false,
-    categories: [] as string[],
+    categories: [] as string[], // Now stores category IDs
     stockQuantity: "",
   });
+
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
+  const [fetchingCategories, setFetchingCategories] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setFetchingCategories(true);
+      try {
+        const res = await fetch(`${API_BASE_URL}/categories`);
+        if (!res.ok) throw new Error("Failed to fetch categories");
+        const data = await res.json();
+        setAvailableCategories(data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        toast.error("Failed to load product categories.");
+      } finally {
+        setFetchingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleImageChange = (index: number, value: string) => {
-    const newImages = [...formData.images];
-    newImages[index] = value;
-    setFormData({ ...formData, images: newImages });
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFormData({ ...formData, images: Array.from(e.target.files) });
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    toast.loading("Adding product...");
 
-    // Simulate product upload
-    console.log("Product added:", formData);
-    toast.success("✅ Product added successfully!");
-    onClose();
+    if (formData.categories.length === 0) {
+        toast.dismiss();
+        toast.error("Please select at least one category.");
+        setIsSubmitting(false);
+        return;
+    }
+
+    try {
+        const imageUrls = await Promise.all(
+            formData.images.map(async (file) => {
+                // 1. Get presigned URL
+                const presignedUrlRes = await fetch(
+                    `${API_BASE_URL}/products/upload-url?fileName=${file.name}&fileType=${file.type}`,
+                    { credentials: 'include' }
+                );
+                if (!presignedUrlRes.ok) {
+                    throw new Error(`Failed to get presigned URL for ${file.name}`);
+                }
+                const { uploadUrl, finalUrl } = await presignedUrlRes.json();
+
+                // 2. Upload to S3
+                await fetch(uploadUrl, {
+                    method: 'PUT',
+                    body: file,
+                    headers: { 'Content-Type': file.type },
+                });
+
+                return finalUrl;
+            })
+        );
+
+
+        const payload = {
+            name: formData.name,
+            description: formData.description,
+            price: parseFloat(formData.price),
+            stockQuantity: parseInt(formData.stockQuantity),
+            categoryId: formData.categories[0], // Send category ID
+            imageUrls: imageUrls,
+        };
+
+        const res = await fetch(`${API_BASE_URL}/products`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || "Failed to create product.");
+        }
+
+        toast.dismiss();
+        toast.success("✅ Product added successfully!");
+        onClose();
+
+    } catch (error: any) {
+        console.error("Product creation error:", error);
+        toast.dismiss();
+        toast.error(error.message);
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
-  const toggleCategory = (category: string) => {
+  const toggleCategory = (categoryId: string) => { // Takes category ID
     setFormData((prev) => {
-      const newCats = prev.categories.includes(category)
-        ? prev.categories.filter((c) => c !== category)
-        : [...prev.categories, category];
+      const newCats = prev.categories.includes(categoryId)
+        ? prev.categories.filter((id) => id !== categoryId)
+        : [...prev.categories, categoryId];
       return { ...prev, categories: newCats };
     });
   };
@@ -117,20 +204,24 @@ export function AddProduct({ onClose }: { onClose: () => void }) {
            {/* --- Category Checkboxes --- */}
           <div>
             <Label className="mb-2 block">Categories</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {categories.map((cat) => (
-                <div key={cat} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={cat}
-                    checked={formData.categories.includes(cat)}
-                    onCheckedChange={() => toggleCategory(cat)}
-                  />
-                  <Label htmlFor={cat} className="text-sm font-normal">
-                    {cat}
-                  </Label>
+            {fetchingCategories ? (
+                <div className="flex items-center justify-center p-4"><Loader2 className="animate-spin" /></div>
+            ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {availableCategories.map((cat) => (
+                    <div key={cat.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={cat.id}
+                        checked={formData.categories.includes(cat.id)}
+                        onCheckedChange={() => toggleCategory(cat.id)}
+                      />
+                      <Label htmlFor={cat.id} className="text-sm font-normal">
+                        {cat.name}
+                      </Label>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+            )}
           </div>
 
           {/* --- Proxy Item Checkbox --- */}
@@ -147,26 +238,21 @@ export function AddProduct({ onClose }: { onClose: () => void }) {
 
 
           <div>
-            <Label>Product Images (5 URLs)</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-              {formData.images.map((img, i) => (
-                <Input
-                  key={i}
-                  type="file"
-                  placeholder={`Image ${i + 1} URL`}
-                  value={img}
-                  onChange={(e) => handleImageChange(i, e.target.value)}
-                />
-              ))}
-            </div>
+            <Label>Product Images</Label>
+            <Input
+              type="file"
+              multiple
+              onChange={handleImageChange}
+              accept="image/*"
+            />
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-[#febd69] hover:bg-[#f5a623] text-black">
-              Add Product
+            <Button type="submit" className="bg-[#febd69] hover:bg-[#f5a623] text-black" disabled={isSubmitting}>
+              {isSubmitting ? 'Adding...' : 'Add Product'}
             </Button>
           </div>
         </form>

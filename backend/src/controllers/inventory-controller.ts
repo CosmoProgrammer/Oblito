@@ -8,7 +8,7 @@ import { products } from '../db/schema/products.js';
 import { categories } from '../db/schema/categories.js';
 import { eq, lte, gte, asc, desc, and, inArray, sql, ne } from 'drizzle-orm';
 
-import { createListingSchema } from '../validation/inventory-validation.js';
+import { createListingSchema, manualStockUpdateSchema } from '../validation/inventory-validation.js';
 import { productQuerySchema } from '../validation/product-validation.js';
 import { warehouses } from '../db/schema.js';
 
@@ -81,6 +81,7 @@ export const handleGetInventory = async (req: any, res: any) => {
                     imageUrls: products.imageURLs,
                     warehouseStock: warehouseInventory.stockQuantity,
                     wholesalerId: warehouses.ownerId,
+                    warehouseInventoryId: shopInventory.warehouseInventoryId,
                 })
                 .from(shopInventory)
                 .innerJoin(products, eq(shopInventory.productId, products.id))
@@ -226,7 +227,46 @@ export const handleCreateRetailListing = async (req: any, res: any) => {
             return res.status(400).json({ errors: e.issues });
         }
         console.error('Error fetching product by ID:', e);
-        
-        res.status(500).json({ message: e })
+        res.status(500).json({ message: 'Internal server error' });
     }
-};
+}
+
+export const handleManualStockUpdate = async (req: any, res: any) => {
+    try {
+        const user = req.user as { id: string, role: 'retailer' | 'wholesaler' };
+        const { shopInventoryId } = req.params;
+        const { quantity } = manualStockUpdateSchema.parse(req.body);
+
+        const shop = await db.query.shops.findFirst({
+            where: eq(shops.ownerId, user.id),
+        });
+
+        if (!shop) {
+            return res.status(404).json({ message: "Retailer shop not found." });
+        }
+
+        const itemToUpdate = await db.query.shopInventory.findFirst({
+            where: and(
+                eq(shopInventory.id, shopInventoryId),
+                eq(shopInventory.shopId, shop.id)
+            ),
+        });
+
+        if (!itemToUpdate) {
+            return res.status(404).json({ message: "Inventory item not found or you do not have permission to update it." });
+        }
+
+        await db.update(shopInventory)
+            .set({ stockQuantity: sql`${shopInventory.stockQuantity} + ${quantity}` })
+            .where(eq(shopInventory.id, shopInventoryId));
+
+        res.json({ message: "Stock updated successfully." });
+
+    } catch (e) {
+        if (e instanceof z.ZodError) {
+            return res.status(400).json({ errors: e.issues });
+        }
+        console.error('Error updating stock:', e);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
