@@ -4,6 +4,7 @@ import { ProductInteractions } from './ProductInteractions';
 import { ProductReviews } from './ProductReview';
 import { useEffect, useState } from 'react';
 import { use } from 'react';
+import { Store, Package } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -16,6 +17,8 @@ type Product = {
   price: string;
   categoryId: string;
   description: string;
+  shopName?: string;
+  stockQuantity?: string | number;
   [key: string]: any;
 };
 
@@ -113,6 +116,10 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     return <div className="text-center py-12">Product not found</div>;
   }
 
+  const stockQuantity = parseInt(String(product.stockQuantity || 0));
+  const isOutOfStock = stockQuantity === 0;
+  const isLowStock = stockQuantity > 0 && stockQuantity <= 5;
+
   return (
     <div className="bg-gray-50 min-h-screen pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -139,10 +146,16 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             {/* Right: Product Info */}
             <div className="p-8 lg:p-12 flex flex-col">
               <div className="mb-auto">
-                <div className="mb-2">
+                <div className="mb-4 flex items-center gap-3 flex-wrap">
                   <span className="inline-block px-3 py-1 rounded-full bg-[#febd69]/20 text-yellow-800 text-xs font-bold uppercase tracking-wide">
                     {categoryName}
                   </span>
+                  {product.shopName && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
+                      <Store className="w-3.5 h-3.5" />
+                      {product.shopName}
+                    </div>
+                  )}
                 </div>
                 
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
@@ -151,7 +164,21 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 
                 <div className="flex items-baseline gap-4 mb-8 border-b border-gray-100 pb-8">
                   <span className="text-4xl font-bold text-gray-900">${product.price}</span>
-                  <span className="text-green-600 font-medium bg-green-50 px-2 py-1 rounded text-sm">In Stock</span>
+                  <div className="flex flex-col gap-2">
+                    {isOutOfStock ? (
+                      <span className="text-red-600 font-bold bg-red-50 px-3 py-1 rounded text-sm">Out of Stock</span>
+                    ) : isLowStock ? (
+                      <span className="text-orange-600 font-bold bg-orange-50 px-3 py-1 rounded text-sm">Only {stockQuantity} left!</span>
+                    ) : (
+                      <span className="text-green-600 font-medium bg-green-50 px-3 py-1 rounded text-sm">In Stock</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stock Quantity Display - Subtle */}
+                <div className="mb-8 flex items-center gap-2 text-sm text-gray-600">
+                  <Package className="w-4 h-4 text-gray-400" />
+                  <span className="font-medium">{stockQuantity} available</span>
                 </div>
 
                 <div className="prose prose-gray max-w-none mb-8 text-gray-600">
