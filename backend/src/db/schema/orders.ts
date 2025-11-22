@@ -8,7 +8,7 @@ import  { warehouses } from './warehouses.js';
 
 export const orderTypeEnum = pgEnum('order_type', ['retail', 'wholesale']);
 export const fullOrderStatusEnum = pgEnum('full_order_status', ['pending', 'processed', 'delivered', 'cancelled']);
-export const paymentMethodEnum = pgEnum('payment_method', ['credit_card', 'upi', 'cash_on_delivery']);
+export const paymentMethodEnum = pgEnum('payment_method', ['credit_card', 'upi', 'cash_on_delivery', 'razorpay']);
 export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'completed', 'failed']);
 
 export const orders = pgTable('orders', {
@@ -20,6 +20,7 @@ export const orders = pgTable('orders', {
     status: fullOrderStatusEnum('status').notNull().default('pending'),
     totalAmount: numeric('total_amount').notNull(),
     paymentMethod: paymentMethodEnum('payment_method').notNull(),
+    paymentId: text('payment_id'),
     paymentStatus: paymentStatusEnum('payment_status').notNull().default('pending'),
     deliveryAddressId: uuid('delivery_address_id').references(() => addresses.id, { onDelete: 'restrict' }),
     offlineOrderDeliveryDate: timestamp('offline_order_delivery_date', { withTimezone: true, mode: 'date' }),

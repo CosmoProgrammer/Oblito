@@ -633,7 +633,7 @@ This document provides a comprehensive overview of all the API routes available 
 
 ### POST /orders
 
--   **Description**: Creates a new order from the user's cart.
+-   **Description**: **[DEPRECATED]** Creates a new order from the user's cart. This endpoint is deprecated in favor of the Razorpay payment flow.
 -   **Authentication**: Required (JWT, role: 'customer')
 -   **Request Body**:
     ```json
@@ -652,6 +652,57 @@ This document provides a comprehensive overview of all the API routes available 
         }
         ```
     -   **400**: Bad request (e.g., cart is empty, invalid address)
+
+### POST /orders/create-razorpay-order
+
+-   **Description**: Creates a Razorpay order for the current user's cart.
+-   **Authentication**: Required (JWT, role: 'customer')
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "order": {
+            "id": "order_...",
+            "entity": "order",
+            "amount": 10800,
+            "amount_paid": 0,
+            "amount_due": 10800,
+            "currency": "INR",
+            "receipt": "receipt_order_...",
+            "offer_id": null,
+            "status": "created",
+            "attempts": 0,
+            "notes": [],
+            "created_at": 1679491183
+          }
+        }
+        ```
+    -   **400**: Bad request (e.g., cart is empty)
+
+### POST /orders/verify-payment
+
+-   **Description**: Verifies the Razorpay payment and creates the order in the database.
+-   **Authentication**: Required (JWT, role: 'customer')
+-   **Request Body**:
+    ```json
+    {
+      "razorpay_order_id": "order_...",
+      "razorpay_payment_id": "pay_...",
+      "razorpay_signature": "...",
+      "deliveryAddressId": "...",
+      "paymentMethod": "razorpay"
+    }
+    ```
+-   **Response**:
+    -   **201**:
+        ```json
+        {
+          "message": "Order placed successfully",
+          "generatedOrders": 1,
+          "orderIds": ["..."]
+        }
+        ```
+    -   **400**: Invalid payment signature or bad request
 
 ### DELETE /orders/:id
 
