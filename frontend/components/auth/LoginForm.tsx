@@ -92,8 +92,7 @@ export default function LoginForm({ userRole }: Props) {
             value={email}
             onChange={handleSetEmail}
             name="email"
-            placeholder="you@example.com"
-            className="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+            className="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
             required
           />
         </div>
@@ -109,22 +108,22 @@ export default function LoginForm({ userRole }: Props) {
             onChange={handleSetPassword}
             name="password"
             placeholder="••••••••"
-            className="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+            className="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
             required
           />
         </div>
 
         <button
           type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-60"
+          className="w-full bg-[#febd69] hover:bg-[#f5a623] text-black font-semibold py-3 rounded-lg transition-colors disabled:opacity-60"
           disabled={status === "loading"}
         >
           {status === "loading" ? "Signing in..." : "Sign In"}
         </button>
 
         <div className="flex flex-col items-center text-sm text-gray-600 gap-1">
-          <a href="#" className="hover:text-blue-600">Forgot password?</a>
-          <a href="#" className="hover:text-blue-600">Login Via OTP</a>
+          <a href="#" className="hover:text-yellow-600">Forgot password?</a>
+          <a href="#" className="hover:text-yellow-600">Login Via OTP</a>
         </div>
       </form>
 
@@ -147,16 +146,16 @@ export default function LoginForm({ userRole }: Props) {
 
             <button
               type="button"
-              className="w-full inline-flex items-center justify-center px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+              className="w-full inline-flex items-center justify-center px-3 py-2 rounded-lg bg-[#febd69] text-black text-sm font-medium hover:bg-[#f5a623]"
             >
-              Sign in with Facebook
+              Sign in with Meta
             </button>
           </div>
         </>
       )}
 
       <div className="mt-6 text-sm text-gray-600">
-        New {userRole}? <a href="../signup" className="text-blue-600 font-semibold hover:underline">Create a {userRole} account</a>
+        New {userRole}? <a href="../signup" className="text-yellow-600 font-semibold hover:underline">Create a {userRole} account</a>
       </div>
 
       {message && (

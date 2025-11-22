@@ -51,8 +51,11 @@ const SignupPage = () => {
     return (
         <main className="min-h-screen bg-gray-100 flex items-center justify-center p-5">
             <div className="w-full max-w-md bg-white rounded-xl shadow-md p-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-                <p className="text-sm text-gray-600 mb-6">Join Oblito as a Buyer</p>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Your Buyer Account</h1>
+                <p className="text-sm text-gray-600 mb-6">Join Oblito to discover and purchase amazing products.</p>
+                <p className="text-sm text-gray-500 mb-6 border-l-4 border-[#febd69] pl-3 py-1 bg-yellow-50 rounded-r">
+                    Retailers and Wholesalers interested in joining Oblito, please contact us directly to begin the vetting process as a verified seller.
+                </p>
 
                 <form onSubmit={handleSubmit} className="grid gap-4">
                     <div>
@@ -63,7 +66,7 @@ const SignupPage = () => {
                             onChange={(e) => setFirstName(e.target.value)}
                             name="firstName"
                             required
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
                         />
                     </div>
 
@@ -74,7 +77,7 @@ const SignupPage = () => {
                             value={lastName}
                             onChange={(e) => setLastName(e.target.value)}
                             name="lastName"
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
                         />
                     </div>
 
@@ -87,7 +90,7 @@ const SignupPage = () => {
                             onChange={(e) => setEmail(e.target.value)}
                             name="email"
                             required
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
                         />
                     </div>
 
@@ -101,13 +104,13 @@ const SignupPage = () => {
                             name="password"
                             required
                             minLength={6}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
                         />
                     </div>
 
                     <button
                         type="submit"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-opacity disabled:opacity-60"
+                        className="w-full bg-[#febd69] hover:bg-[#f5a623] text-black font-semibold py-3 rounded-lg transition-opacity disabled:opacity-60"
                         disabled={status === "loading"}
                     >
                         {status === "loading" ? "Creating Account..." : "Sign Up"}
@@ -115,7 +118,7 @@ const SignupPage = () => {
                 </form>
 
                 <div className="mt-6 pt-4 border-t border-gray-200 text-sm">
-                  <a href="/login" className="text-gray-600 hover:text-blue-600">Already have an account? Sign In</a>
+                  <a href="/login" className="text-gray-600 hover:text-yellow-600">Already have an account? Sign In</a>
                 </div>
 
                 {message && (
