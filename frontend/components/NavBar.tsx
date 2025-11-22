@@ -75,10 +75,12 @@ const Navbar = () => {
         }
     };
 
-    const onFilterChange = (searchTerm: string, categories: string[]) => {
+    const onFilterChange = (searchTerm: string, categories: string[], minPrice?: number, maxPrice?: number) => {
         // Handle filter change logic here
         console.log('Search Term:', searchTerm);
         console.log('Selected Categories:', categories);
+        console.log('Min Price:', minPrice);
+        console.log('Max Price:', maxPrice);
     }
 
     return (
