@@ -118,10 +118,6 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     return <div className="text-center py-12">Product not found</div>;
   }
 
-  const stockQuantity = parseInt(String(product.stockQuantity || 0));
-  const isOutOfStock = stockQuantity === 0;
-  const isLowStock = stockQuantity > 0 && stockQuantity <= 5;
-
   return (
     <div className="bg-gray-50 min-h-screen pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -148,16 +144,10 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             {/* Right: Product Info */}
             <div className="p-8 lg:p-12 flex flex-col">
               <div className="mb-auto">
-                <div className="mb-4 flex items-center gap-3 flex-wrap">
+                <div className="mb-2">
                   <span className="inline-block px-3 py-1 rounded-full bg-[#febd69]/20 text-yellow-800 text-xs font-bold uppercase tracking-wide">
                     {categoryName}
                   </span>
-                  {product.shopName && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
-                      <Store className="w-3.5 h-3.5" />
-                      {product.shopName}
-                    </div>
-                  )}
                 </div>
                 
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
