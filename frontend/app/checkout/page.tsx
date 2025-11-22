@@ -321,9 +321,49 @@ export default function CheckoutPage() {
         setError("Please select a delivery address");
         return;
     }
+    
     if (paymentMethod === 'cash_on_delivery') {
-        // Handle cash on delivery separately
-        console.log("Placing order with cash on delivery");
+        // Handle cash on delivery - create order without payment verification
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch(`${API_BASE_URL}/orders`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                },
+                body: JSON.stringify({
+                    deliveryAddressId: selectedAddress,
+                    paymentMethod: 'cash_on_delivery'
+                }),
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                const subtotal = cartItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+                const taxAmount = subtotal * 0.08;
+                const orderSum: OrderSummary = {
+                    subtotal,
+                    tax: taxAmount,
+                    total: subtotal + taxAmount,
+                    itemCount: cartItems.length,
+                };
+                setOrderSummary(orderSum);
+                setCartItems([]);
+                setStep("review");
+                await fetchAndSetOrderData();
+            } else {
+                setError(data.message || "Failed to place order");
+            }
+        } catch (err: any) {
+            console.error("Error placing order:", err);
+            setError(err.message || "Failed to place order");
+        } finally {
+            setLoading(false);
+        }
         return;
     }
 
@@ -377,11 +417,11 @@ export default function CheckoutPage() {
 
                 if (verifyRes.ok) {
                     const subtotal = cartItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
-                    const tax = subtotal * 0.08;
+                    const taxAmount = subtotal * 0.08;
                     const orderSum: OrderSummary = {
                         subtotal,
-                        tax,
-                        total: subtotal + tax,
+                        tax: taxAmount,
+                        total: subtotal + taxAmount,
                         itemCount: cartItems.length,
                     };
                     setOrderSummary(orderSum);

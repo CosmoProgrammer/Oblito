@@ -413,7 +413,7 @@ export default function ReturnsAndOrdersPage() {
                         <div>
                           <p className="text-gray-500 uppercase text-xs font-bold tracking-wider mb-1">Total</p>
                           <p className="font-medium text-gray-900">
-                            ${parseFloat(String(order.total || 0)).toFixed(2)}
+                            ₹{parseFloat(String(order.total || 0)).toFixed(2)}
                           </p>
                         </div>
                         <div>
@@ -476,7 +476,7 @@ export default function ReturnsAndOrdersPage() {
                                         </Link>
                                         <p className="text-sm text-gray-500 mt-1">Quantity: {item.quantity}</p>
                                         <p className="text-sm font-bold text-gray-900 mt-2">
-                                          ${item.price ? (parseFloat(String(item.price)) * parseInt(String(item.quantity))).toFixed(2) : "N/A"}
+                                          ₹{item.price ? (parseFloat(String(item.price)) * parseInt(String(item.quantity))).toFixed(2) : "N/A"}
                                         </p>
                                         <div className="mt-2 flex gap-2">
                                             {item.status !== 'to_return' && item.status !== 'returned' && item.status !== 'cancelled' && (
@@ -556,7 +556,7 @@ export default function ReturnsAndOrdersPage() {
                         </div>
                         <p className="text-sm text-gray-500 mt-2">Quantity: {item.quantity}</p>
                         <p className="text-sm font-bold text-gray-900 mt-2">
-                          ${item.price ? (parseFloat(String(item.price)) * parseInt(String(item.quantity))).toFixed(2) : "N/A"}
+                          ₹{item.price ? (parseFloat(String(item.price)) * parseInt(String(item.quantity))).toFixed(2) : "N/A"}
                         </p>
                          <p className="text-xs text-gray-400 mt-1">
                             Return requested for order placed on {new Date(item.date!).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric"})}
