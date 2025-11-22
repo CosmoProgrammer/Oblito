@@ -74,7 +74,7 @@ async function seed() {
 
     const productIds: string[] = [];
     const productPrices: number[] = [];
-    for (let i = 1; i <= 15; i++) {
+    for (let i = 1; i <= 1000; i++) {
       const name = `Product ${i}`;
       const description = `Description for product ${i}`;
       const price = parseFloat((9.99 + i * 2).toFixed(2));
@@ -116,7 +116,7 @@ async function seed() {
     }
 
     const warehouseInventoryIds: string[] = [];
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 1000; i++) {
       const warehouseId = warehouseIds[i % warehouseIds.length];
       const productId = productIds[i];
       const qty = 100 + i * 10;
@@ -129,7 +129,7 @@ async function seed() {
     }
 
     const shopInventoryIds: string[] = [];
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 1000; i++) {
       const shopId = shopIds[i % shopIds.length];
       const productId = productIds[i];
       const qty = 10 + i * 5;

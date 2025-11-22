@@ -32,7 +32,7 @@ export function CarouselDemo({ imageURLs }: CarouselDemoProps) {
     : defaultImages;
 
   return (
-    <div className="flex justify-start items-start gap-16">
+    <div className="flex justify-start items-start gap-4">
       {/* LEFT VERTICAL THUMBNAIL CAROUSEL */}
       <Carousel
         opts={{
@@ -49,11 +49,11 @@ export function CarouselDemo({ imageURLs }: CarouselDemoProps) {
                 onClick={() => mainApi?.scrollTo(index)}
               >
                 <Card className="border-0 shadow-none rounded-md overflow-hidden">
-                  <CardContent className="p-0 w-full h-[120px]">
+                  <CardContent className="p-0 w-full h-[120px] bg-gray-100">
                     <img
                       src={image.src}
                       alt={image.alt}
-                      className="w-full h-[120px] object-cover block"
+                      className="w-full h-full object-contain"
                     />
                   </CardContent>
                 </Card>
@@ -71,11 +71,11 @@ export function CarouselDemo({ imageURLs }: CarouselDemoProps) {
           {productImages.map((image, index) => (
             <CarouselItem key={index}>
               <Card className="border-0 shadow-none overflow-hidden rounded-lg">
-                <CardContent className="relative p-0 h-[600px]">
+                <CardContent className="relative p-0 h-[600px] bg-gray-100 flex items-center justify-center">
                   <img
                     src={image.src}
                     alt={image.alt}
-                    className="w-full h-[600px] object-cover block"
+                    className="w-full h-full object-contain"
                   />
                 </CardContent>
               </Card>
