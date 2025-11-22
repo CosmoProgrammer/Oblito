@@ -155,7 +155,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 </h1>
                 
                 <div className="flex items-baseline gap-4 mb-8 border-b border-gray-100 pb-8">
-                  <span className="text-4xl font-bold text-gray-900">${product.price}</span>
+                  <span className="text-4xl font-bold text-gray-900">₹{product.price}</span>
                   {product.stockQuantity && parseInt(product.stockQuantity) > 0 ? (
                     <span className="text-green-600 font-medium bg-green-50 px-2 py-1 rounded text-sm">In Stock: {product.stockQuantity}</span>
                   ) : (

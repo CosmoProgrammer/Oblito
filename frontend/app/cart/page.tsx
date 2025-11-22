@@ -190,7 +190,7 @@ export default function CartPage() {
                             </p>
                           </div>
                           <p className="text-xl font-bold text-gray-900">
-                            ${Number(item.price).toFixed(2)}
+                            ₹{Number(item.price).toFixed(2)}
                           </p>
                         </div>
 
@@ -245,7 +245,7 @@ export default function CartPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between text-gray-600 text-lg">
                     <span>Subtotal</span>
-                    <span className="font-semibold text-gray-900">${total.toFixed(2)}</span>
+                    <span className="font-semibold text-gray-900">₹{total.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-gray-600 text-lg">
                     <span>Shipping</span>
@@ -253,13 +253,13 @@ export default function CartPage() {
                   </div>
                   <div className="flex justify-between text-gray-600 text-lg">
                     <span>Tax (8%)</span>
-                    <span className="font-semibold text-gray-900">${(total * 0.08).toFixed(2)}</span>
+                    <span className="font-semibold text-gray-900">₹{(total * 0.08).toFixed(2)}</span>
                   </div>
 
                   <div className="border-t-2 border-dashed border-gray-100 my-6 pt-6">
                     <div className="flex justify-between items-end">
                       <span className="text-lg font-bold text-gray-900">Total</span>
-                      <span className="text-4xl font-extrabold text-gray-900 tracking-tight">${(total + total * 0.08).toFixed(2)}</span>
+                      <span className="text-4xl font-extrabold text-gray-900 tracking-tight">₹{(total + total * 0.08).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

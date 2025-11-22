@@ -68,8 +68,13 @@ const Navbar = () => {
                 method: 'POST',
                 credentials: 'include',
             });
-            setUser(null);
-            router.push('/login');
+            const isConfirmed = window.confirm('Are you sure you want to sign out?');
+            if(isConfirmed)
+            {
+                setUser(null);
+                router.push('/login');
+            }
+           
         } catch (error) {
             console.error('Failed to sign out', error);
         }

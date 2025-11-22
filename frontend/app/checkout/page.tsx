@@ -744,7 +744,7 @@ export default function CheckoutPage() {
                         </div>
                         <div className="flex justify-between pt-3 border-t border-gray-200">
                           <span className="font-bold text-gray-900">Total Amount</span>
-                          <span className="font-bold text-gray-900 text-lg">${orderData.totalAmount}</span>
+                          <span className="font-bold text-gray-900 text-lg">₹{orderData.totalAmount}</span>
                         </div>
                       </div>
                     </div>
@@ -790,7 +790,7 @@ export default function CheckoutPage() {
                         </div>
                       </div>
                       <span className="font-medium text-sm">
-                        ${(Number(item.price) * Number(item.quantity)).toFixed(2)}
+                        ₹{(Number(item.price) * Number(item.quantity)).toFixed(2)}
                       </span>
                     </div>
                   ))
@@ -800,7 +800,7 @@ export default function CheckoutPage() {
               <div className="space-y-3 mb-8">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span>
-                  <span className="font-medium">${step === "review" && orderSummary ? orderSummary.subtotal.toFixed(2) : total.toFixed(2)}</span>
+                  <span className="font-medium">₹{step === "review" && orderSummary ? orderSummary.subtotal.toFixed(2) : total.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping</span>
@@ -808,12 +808,12 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Tax (8%)</span>
-                  <span className="font-medium">${step === "review" && orderSummary ? orderSummary.tax.toFixed(2) : tax.toFixed(2)}</span>
+                  <span className="font-medium">₹{step === "review" && orderSummary ? orderSummary.tax.toFixed(2) : tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-end pt-4 border-t border-gray-100">
                   <span className="font-bold text-gray-900 text-lg">Total</span>
                   <span className="font-extrabold text-gray-900 text-2xl">
-                    ${step === "review" && orderSummary ? orderSummary.total.toFixed(2) : grandTotal.toFixed(2)}
+                    ₹{step === "review" && orderSummary ? orderSummary.total.toFixed(2) : grandTotal.toFixed(2)}
                   </span>
                 </div>
               </div>
