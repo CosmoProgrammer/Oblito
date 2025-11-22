@@ -3,20 +3,30 @@
 import React, { useState, useEffect } from 'react';
 import SearchBar from './SearchBar';
 import Link from 'next/link';
-import { User, Package, ShoppingCart, Menu } from 'lucide-react';
+import { User, Package, ShoppingCart, Menu, LogOut, LayoutDashboard } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Category {
     id: string;
     name: string;
 }
 
+interface User {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: 'customer' | 'retailer' | 'wholesaler';
+}
+
 const Navbar = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [user, setUser] = useState<User | null>(null);
+    const router = useRouter();
 
     useEffect(() => {
-        // Fetch categories from backend
         async function fetchCategories() {
             try {
                 const res = await fetch('http://localhost:8000/categories', {
@@ -25,7 +35,6 @@ const Navbar = () => {
                 if (res.ok) {
                     const data = await res.json();
                     setCategories(data);
-                    console.log("Categories loaded:", data);
                 }
             } catch (err) {
                 console.error('Error fetching categories:', err);
@@ -33,16 +42,44 @@ const Navbar = () => {
                 setLoading(false);
             }
         }
+
+        async function fetchUser() {
+            try {
+                const res = await fetch(`http://localhost:8000/me`, {
+                    credentials: 'include',
+                    method: 'GET',
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setUser(data.user);
+                }
+            } catch (err) {
+                console.error('Error fetching user:', err);
+            }
+        }
+
         fetchCategories();
+        fetchUser();
     }, []);
+
+    const handleSignOut = async () => {
+        try {
+            await fetch('http://localhost:8000/auth/logout', {
+                method: 'POST',
+                credentials: 'include',
+            });
+            setUser(null);
+            router.push('/login');
+        } catch (error) {
+            console.error('Failed to sign out', error);
+        }
+    };
 
     const onFilterChange = (searchTerm: string, categories: string[]) => {
         // Handle filter change logic here
         console.log('Search Term:', searchTerm);
         console.log('Selected Categories:', categories);
     }
-
-    const [user, setUser] = useState<string>('');
 
     return (
         <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 w-full shadow-sm">
@@ -69,24 +106,45 @@ const Navbar = () => {
 
                     {/* Right Actions */}
                     <div className="hidden md:flex items-center gap-6">
-                        <Link href="/profile" className="flex flex-col items-center group">
-                            <div className="p-2 rounded-full group-hover:bg-gray-100 transition-colors">
-                                <User className="w-6 h-6 text-gray-600 group-hover:text-gray-900" />
-                            </div>
-                            <span className="text-[10px] font-medium text-gray-500 group-hover:text-gray-900 uppercase tracking-wide">Profile</span>
-                        </Link>
-                        
-                        <Link href="/returns-and-orders" className="flex flex-col items-center group">
-                            <div className="p-2 rounded-full group-hover:bg-gray-100 transition-colors">
-                                <Package className="w-6 h-6 text-gray-600 group-hover:text-gray-900" />
-                            </div>
-                            <span className="text-[10px] font-medium text-gray-500 group-hover:text-gray-900 uppercase tracking-wide">Orders</span>
-                        </Link>
-                        
-                        <Link href="/cart" className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-full transition-all shadow-md hover:shadow-lg active:scale-95">
-                            <ShoppingCart className="w-5 h-5" />
-                            <span className="font-bold text-sm">Cart</span>
-                        </Link>
+                        {user ? (
+                            <>
+                                {(user.role === 'retailer' || user.role === 'wholesaler') && (
+                                    <Link href="/dashboard" className="flex flex-col items-center group">
+                                        <div className="p-2 rounded-full group-hover:bg-gray-100 transition-colors">
+                                            <LayoutDashboard className="w-6 h-6 text-gray-600 group-hover:text-gray-900" />
+                                        </div>
+                                        <span className="text-[10px] font-medium text-gray-500 group-hover:text-gray-900 uppercase tracking-wide">Dashboard</span>
+                                    </Link>
+                                )}
+                                <Link href="/profile" className="flex flex-col items-center group">
+                                    <div className="p-2 rounded-full group-hover:bg-gray-100 transition-colors">
+                                        <User className="w-6 h-6 text-gray-600 group-hover:text-gray-900" />
+                                    </div>
+                                    <span className="text-[10px] font-medium text-gray-500 group-hover:text-gray-900 uppercase tracking-wide">Profile</span>
+                                </Link>
+                                <button onClick={handleSignOut} className="flex flex-col items-center group">
+                                    <div className="p-2 rounded-full group-hover:bg-gray-100 transition-colors">
+                                        <LogOut className="w-6 h-6 text-gray-600 group-hover:text-gray-900" />
+                                    </div>
+                                    <span className="text-[10px] font-medium text-gray-500 group-hover:text-gray-900 uppercase tracking-wide">Sign Out</span>
+                                </button>
+                                <Link href="/returns-and-orders" className="flex flex-col items-center group">
+                                    <div className="p-2 rounded-full group-hover:bg-gray-100 transition-colors">
+                                        <Package className="w-6 h-6 text-gray-600 group-hover:text-gray-900" />
+                                    </div>
+                                    <span className="text-[10px] font-medium text-gray-500 group-hover:text-gray-900 uppercase tracking-wide">Orders</span>
+                                </Link>
+                                <Link href="/cart" className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-full transition-all shadow-md hover:shadow-lg active:scale-95">
+                                    <ShoppingCart className="w-5 h-5" />
+                                    <span className="font-bold text-sm">Cart</span>
+                                </Link>
+                            </>
+                        ) : (
+                            <>
+                                <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900">Sign In</Link>
+                                <Link href="/signup" className="text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 px-4 py-2 rounded-md">Sign Up</Link>
+                            </>
+                        )}
                     </div>
 
                     {/* Mobile Menu Button */}

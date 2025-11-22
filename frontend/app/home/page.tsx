@@ -240,8 +240,12 @@ export default function HomePage() {
   };
 
   // Get category names for display
-  const getCategoryNames = (names: string[]) => {
-    return names.join(", ");
+  const getCategoryNames = (ids: string[]) => {
+    if (!categories.length) return ids.join(", ");
+    return ids.map(id => {
+      const category = categories.find(cat => cat.id === id);
+      return category ? category.name : id;
+    }).join(", ");
   };
 
   return (

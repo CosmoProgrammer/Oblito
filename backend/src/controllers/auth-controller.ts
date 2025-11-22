@@ -145,3 +145,13 @@ export const handleLogin = async (req: any, res: any) => {
 export const handleGetUser = async (req: any, res: any) => {
     res.json({user: req.user });
 };
+
+export const handleLogout = async (req: any, res: any) => {
+    res.cookie('token', '', {
+        httpOnly: true,
+        expires: new Date(0),
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+    });
+    res.status(200).json({ message: 'Logged out successfully' });
+};

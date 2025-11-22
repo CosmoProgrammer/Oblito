@@ -3,7 +3,7 @@ import passport from "passport";
 
 import { protect } from "../middleware/auth-middleware.js";
 
-import { handleGoogleCallback, handleSignUp, handleLogin, handleGetUser } from "../controllers/auth-controller.js";
+import { handleGoogleCallback, handleSignUp, handleLogin, handleGetUser, handleLogout } from "../controllers/auth-controller.js";
 
 const router = Router();
 
@@ -19,5 +19,7 @@ router.post('/auth/signup', handleSignUp);
 router.post('/auth/login',  handleLogin);
 
 router.get('/auth/user', protect, handleGetUser);
+
+router.post('/auth/logout', protect, handleLogout);
 
 export default router;
