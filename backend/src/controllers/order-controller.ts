@@ -9,6 +9,7 @@ import { orderItems } from '../db/schema/orderItems.js';
 import { warehouseInventory } from '../db/schema/warehouseInventory.js';
 import razorpayInstance from '../services/razorpay-service.js';
 import crypto from 'crypto';
+import { sendOrderConfirmationEmail } from '../services/email-service.js';
 
 import { createOrderSchema, orderIdParamSchema, createWholesaleOrderSchema, createWholesaleRazorpayOrderSchema, verifyWholesalePaymentSchema } from '../validation/order-validation.js';
 
@@ -171,23 +172,22 @@ export const handleVerifyPayment = async (req: any, res: any) => {
 
 
         const userCart = await db.query.carts.findFirst({
-
             where: eq(carts.customerId, user.id),
-
             with: {
-
                 cartItems: {
-
                     with: {
-
-                        shopInventory: true
-
+                        shopInventory: {
+                            with: {
+                                product: {
+                                    columns: {
+                                        name: true,
+                                    }
+                                }
+                            }
+                        }
                     }
-
                 }
-
             }
-
         });
 
 
@@ -306,6 +306,19 @@ export const handleVerifyPayment = async (req: any, res: any) => {
 
                 }
 
+                const orderDetailsForEmail = items.map((item: any) => ({
+                    //@ts-ignore
+                    productName: item.shopInventory.product.name,
+                    quantity: parseFloat(item.quantity),
+                    price: item.shopInventory.price
+                }));
+
+                sendOrderConfirmationEmail(
+                    user.email,
+                    user.firstName,
+                    orderId,
+                    orderDetailsForEmail
+                );
             }
 
 
@@ -381,23 +394,22 @@ export const handlePostOrder = async (req: any, res: any) => {
 
 
         const userCart = await db.query.carts.findFirst({
-
             where: eq(carts.customerId, user.id),
-
             with: {
-
                 cartItems: {
-
                     with: {
-
-                        shopInventory: true
-
+                        shopInventory: {
+                            with: {
+                                product: {
+                                    columns: {
+                                        name: true
+                                    }
+                                }
+                            }
+                        }
                     }
-
                 }
-
             }
-
         });
 
 
@@ -514,6 +526,18 @@ export const handlePostOrder = async (req: any, res: any) => {
 
                 }
 
+                const orderDetailsForEmail = items.map((item: any) => ({
+                    productName: item.shopInventory.product.name,
+                    quantity: parseFloat(item.quantity),
+                    price: item.shopInventory.price
+                }));
+
+                sendOrderConfirmationEmail(
+                    user.email,
+                    user.firstName,
+                    orderId,
+                    orderDetailsForEmail
+                );
             }
 
 
