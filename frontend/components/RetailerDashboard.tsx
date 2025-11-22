@@ -119,6 +119,9 @@ export default function RetailerDashboard() {
         pendingOrders: 0,
     });
     const [salesChartData, setSalesChartData] = useState<{ month: string; sales: number }[]>([]);
+    const [restockPrice, setRestockPrice] = useState(0);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
 
     const fetchData = async () => {
         try {
@@ -188,6 +191,13 @@ export default function RetailerDashboard() {
     };
 
     useEffect(() => {
+        const loadRazorpay = () => {
+            const script = document.createElement("script");
+            script.src = "https://checkout.razorpay.com/v1/checkout.js";
+            script.async = true;
+            document.body.appendChild(script);
+        };
+        loadRazorpay();
         fetchData();
     }, []);
 
@@ -231,6 +241,7 @@ export default function RetailerDashboard() {
     function handleRestockClick(item: InventoryItem) {
         setProductToRestock(item);
         setRestockQuantity(1);
+        setRestockPrice(parseFloat(item.price));
         if (item.warehouseInventoryId) {
             setRestockMode('wholesale');
         } else {
@@ -244,33 +255,77 @@ export default function RetailerDashboard() {
             return;
         }
         
-        try {
-            const payload = {
-                warehouseInventoryId: productToRestock.warehouseInventoryId,
-                quantity: restockQuantity,
-                paymentMethod: 'cash_on_delivery',
-                isProxyItem: false,
-            };
+        setIsSubmitting(true);
     
-            const res = await fetch(`${API_BASE_URL}/wholesale-orders`, {
+        try {
+            const createOrderRes = await fetch(`${API_BASE_URL}/orders/create-wholesale-razorpay-order`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    warehouseInventoryId: productToRestock.warehouseInventoryId,
+                    quantity: restockQuantity,
+                }),
             });
     
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || "Failed to place wholesale order.");
+            const createOrderData = await createOrderRes.json();
+            if (!createOrderRes.ok) {
+                throw new Error(createOrderData.message || "Failed to create Razorpay order");
             }
     
-            toast.success(`Order placed for ${restockQuantity}x ${productToRestock.name}`);
-            setProductToRestock(null);
-            fetchData();
-            
+            const { order: razorpayOrder } = createOrderData;
+    
+            const options = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                amount: razorpayOrder.amount,
+                currency: razorpayOrder.currency,
+                name: "Oblito Wholesale Restock",
+                description: `Payment for ${productToRestock.name}`,
+                order_id: razorpayOrder.id,
+                handler: async function (response: any) {
+                    const verifyPayload = {
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature: response.razorpay_signature,
+                        warehouseInventoryId: productToRestock.warehouseInventoryId,
+                        quantity: restockQuantity,
+                        shopPrice: restockPrice
+                    };
+    
+                    const verifyRes = await fetch(`${API_BASE_URL}/orders/verify-wholesale-payment`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(verifyPayload),
+                    });
+    
+                    const verifyData = await verifyRes.json();
+    
+                    if (verifyRes.ok) {
+                        toast.success(`Successfully restocked ${productToRestock.name}!`);
+                        setProductToRestock(null);
+                        fetchData();
+                    } else {
+                        toast.error(verifyData.message || "Payment verification failed");
+                    }
+                },
+                prefill: {
+                    name: userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "",
+                    email: userProfile ? userProfile.email : "",
+                },
+                theme: {
+                    color: "#3399cc"
+                }
+            };
+            //@ts-ignore
+            const rzp = new window.Razorpay(options);
+            rzp.open();
+    
         } catch (error: any) {
+            console.error("Error during wholesale restock:", error);
             toast.error(error.message);
-            console.error("Error placing wholesale order:", error);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -336,7 +391,90 @@ export default function RetailerDashboard() {
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="orders">Recent Orders</TabsTrigger><TabsTrigger value="inventory">Inventory</TabsTrigger><TabsTrigger value="wholesale">Wholesale Orders</TabsTrigger></TabsList>
         <TabsContent value="overview"><Card><CardHeader><CardTitle>Sales Analytics</CardTitle></CardHeader><CardContent className="h-[300px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={salesChartData}><XAxis dataKey="month" /><YAxis /><Tooltip /><Bar dataKey="sales" fill="#4f46e5" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></CardContent></Card></TabsContent>
-        <TabsContent value="orders"><Card><CardHeader><CardTitle>Recent Orders</CardTitle></CardHeader><CardContent><table className="w-full text-sm"><thead><tr className="text-left border-b"><th className="py-2 w-12"></th><th className="py-2">Order ID</th><th>Date</th><th>Customer & Address</th><th>Total</th><th>Overall Status</th></tr></thead><tbody>{orders.slice(0, 10).map((order) => (<Fragment key={order.id}>{(() => {const hasReturnItem = order.orderItems.some(item => item.status === 'to_return'); const orderRowClassName = `border-b ${hasReturnItem ? 'bg-red-50/50 border-red-200' : 'hover:bg-gray-50'}`; return (<tr className={orderRowClassName}><td className="py-2 text-center"><Button variant="ghost" size="sm" onClick={() => toggleOrderExpansion(order.id)}>{expandedOrders.includes(order.id) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</Button></td><td className="py-2 font-mono text-xs">{order.id.substring(0, 8)}...</td><td>{new Date(order.createdAt).toLocaleDateString()}</td><td><div><p className="font-medium text-gray-900">{order.customer.firstName} {order.customer.lastName}</p>{order.deliveryAddress && (<p className="text-xs text-gray-500 mt-1">{order.deliveryAddress.streetAddress}, {order.deliveryAddress.city}, {order.deliveryAddress.state} {order.deliveryAddress.postalCode}</p>)}</div></td><td>${parseFloat(order.totalAmount).toFixed(2)}</td><td><span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColorClass(order.status)}`}>{order.status}</span></td></tr>);})()}{expandedOrders.includes(order.id) && (<tr className="bg-gray-50/50"><td colSpan={6} className="p-0"><div className="p-4"><h4 className="font-bold mb-2 text-xs uppercase text-gray-500">Order Items</h4><div className="space-y-2">{order.orderItems.map(item => {const isReturn = item.status === 'to_return'; const isFinalState = ['delivered', 'returned', 'cancelled'].includes(item.status); return (<div key={item.id} className="flex justify-between items-center p-2 rounded-md hover:bg-gray-100"><div><p className="font-medium">{item.shopInventory.product.name} (x{item.quantity})</p><p className="text-xs text-gray-500 font-mono">ID: {item.id.substring(0,8)}...</p></div>{isFinalState && !isReturn ? (<span className={`px-2 py-1 rounded-md text-xs font-medium border ${getStatusColorClass(item.status)}`}>{item.status}</span>) : (<select value={item.status} onChange={(e) => {if (isReturn) {handleReturnStatusChange(item.id, e.target.value)} else {handleOrderItemStatusChange(item.id, e.target.value)}}} disabled={isFinalState} className={`px-2 py-1 rounded-md text-xs border ${getStatusColorClass(item.status)}`}>{isReturn ? (<><option value="to_return">Awaiting Return</option><option value="returned">Mark as Returned</option></>) : (<><option value="pending">Pending</option><option value="processed">Processed</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></>)}</select>)}</div>)})}</div></div></td></tr>)}</Fragment>))}</tbody></table></CardContent></Card></TabsContent>
+        <TabsContent value="orders">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Recent Orders</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="text-left border-b">
+                                            <th className="py-2 w-12"></th>
+                                            <th className="py-2">Order ID</th>
+                                            <th>Date</th>
+                                            <th>Customer & Address</th>
+                                            <th>Total</th>
+                                            <th>Overall Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {orders.slice(0, 10).map((order) => (
+                                            <Fragment key={order.id}>
+                                                {(() => {
+                                                    const hasReturnItem = order.orderItems.some(item => item.status === 'to_return');
+                                                    const orderRowClassName = `border-b ${hasReturnItem ? 'bg-red-50/50 border-red-200' : 'hover:bg-gray-50'}`;
+                                                    return (
+                                                        <tr className={orderRowClassName}>
+                                                            <td className="py-2 text-center"><Button variant="ghost" size="sm" onClick={() => toggleOrderExpansion(order.id)}>{expandedOrders.includes(order.id) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</Button></td>
+                                                            <td className="py-2 font-mono text-xs">{order.id.substring(0, 8)}...</td>
+                                                            <td>{new Date(order.createdAt).toLocaleDateString()}</td>
+                                                            <td>
+                                                                <div>
+                                                                    <p className="font-medium text-gray-900">{order.customer.firstName} {order.customer.lastName}</p>
+                                                                    {order.deliveryAddress && (
+                                                                        <p className="text-xs text-gray-500 mt-1">{order.deliveryAddress.streetAddress}, {order.deliveryAddress.city}, {order.deliveryAddress.state} {order.deliveryAddress.postalCode}</p>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td>${parseFloat(order.totalAmount).toFixed(2)}</td>
+                                                            <td><span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColorClass(order.status)}`}>{order.status}</span></td>
+                                                        </tr>
+                                                    );
+                                                })()}
+                                                {expandedOrders.includes(order.id) && (
+                                                    <tr className="bg-gray-50/50">
+                                                        <td colSpan={6} className="p-0">
+                                                            <div className="p-4">
+                                                                <h4 className="font-bold mb-2 text-xs uppercase text-gray-500">Order Items</h4>
+                                                                <div className="space-y-2">
+                                                                    {order.orderItems.map(item => {
+                                                                        const isReturn = item.status === 'to_return';
+                                                                        const isFinalState = ['delivered', 'returned', 'cancelled'].includes(item.status);
+                                                                        return (
+                                                                            <div key={item.id} className="flex justify-between items-center p-2 rounded-md">
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <img src={item.shopInventory.product.imageURLs[0]} alt={item.shopInventory.product.name} className="w-10 h-10 rounded-lg bg-gray-200 object-cover" />
+                                                                                    <div>
+                                                                                        <p className="font-medium text-gray-800">{item.shopInventory.product.name}</p>
+                                                                                        <p className="text-xs text-gray-500">Qty: {item.quantity} · ${item.priceAtPurchase}</p>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColorClass(item.status)}`}>{item.status.replace('_', ' ')}</span>
+                                                                                    {isReturn && (<Button size="sm" onClick={() => handleReturnStatusChange(item.id, 'returned')}>Mark as Returned</Button>)}
+                                                                                    {!isFinalState && !isReturn && (
+                                                                                        <>
+                                                                                            <Button size="sm" variant="outline" onClick={() => handleOrderItemStatusChange(item.id, 'shipped')}>Mark Shipped</Button>
+                                                                                            <Button size="sm" onClick={() => handleOrderItemStatusChange(item.id, 'delivered')}>Mark Delivered</Button>
+                                                                                        </>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </Fragment>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
         <TabsContent value="inventory"><Card><CardHeader><CardTitle>Inventory Status</CardTitle></CardHeader><CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{inventory.map((item) => (<Card key={item.id} className="p-4"><CardTitle className="text-sm">{item.name}</CardTitle><p className={`mt-2 font-medium ${parseInt(item.stockQuantity) < 10 ? "text-red-500" : "text-green-600"}`}>{item.stockQuantity} in stock</p><Button onClick={() => handleRestockClick(item)} className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-4">{item.warehouseInventoryId ? 'Restock from Wholesaler' : 'Manual Restock'}</Button></Card>))}</CardContent></Card></TabsContent>
         <TabsContent value="wholesale"><Card><CardHeader><CardTitle>Wholesale Orders</CardTitle></CardHeader><CardContent><table className="w-full text-sm"><thead><tr className="text-left border-b"><th className="py-2">Order ID</th><th>Date</th><th>Wholesaler</th><th>Items</th><th>Total</th><th>Status</th></tr></thead><tbody>{wholesaleOrders.map((order) => (<tr key={order.id} className="border-b hover:bg-gray-50"><td className="py-2 font-mono text-xs">{order.id.substring(0, 8)}...</td><td>{new Date(order.createdAt).toLocaleDateString()}</td><td>{order.warehouse?.name || 'N/A'}</td><td>{order.orderItems.map(item => `${item.quantity}x ${item.warehouseInventory.product.name}`).join(', ')}</td><td>${parseFloat(order.totalAmount).toFixed(2)}</td><td><span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColorClass(order.status)}`}>{order.status}</span></td></tr>))}</tbody></table></CardContent></Card></TabsContent>
       </Tabs>
@@ -359,10 +497,18 @@ export default function RetailerDashboard() {
                     <Label htmlFor="restock-quantity">Quantity</Label>
                     <Input id="restock-quantity" type="number" value={restockQuantity} onChange={(e) => setRestockQuantity(parseInt(e.target.value) || 1)} min="1" max={restockMode === 'wholesale' && productToRestock?.warehouseStock ? parseInt(productToRestock.warehouseStock) : undefined} />
                 </div>
+                 {restockMode === 'wholesale' && (
+                    <div>
+                        <Label htmlFor="restock-price">Your Selling Price ($)</Label>
+                        <Input id="restock-price" type="number" value={restockPrice} onChange={(e) => setRestockPrice(parseFloat(e.target.value) || 0)} />
+                    </div>
+                )}
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setProductToRestock(null)}>Cancel</Button>
-                <Button onClick={restockMode === 'wholesale' ? confirmWholesaleRestock : confirmManualRestock}>Confirm</Button>
+                <Button onClick={restockMode === 'wholesale' ? confirmWholesaleRestock : confirmManualRestock} disabled={isSubmitting}>
+                    {isSubmitting ? 'Processing...' : 'Confirm'}
+                </Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
