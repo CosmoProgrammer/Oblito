@@ -3,11 +3,28 @@ import { Router } from 'express';
 import { protect } from "../middleware/auth-middleware.js";
 import { checkRole } from '../middleware/role-middleware.js';
 
-import { handlePostOrder, handleGetOrders, handleDeleteOrder, handlePostWholesaleOrder, handleGetWholesaleOrders, handleDeleteWholesaleOrder } from '../controllers/order-controller.js';
+import { 
+    handlePostOrder, 
+    handleGetOrders, 
+    handleDeleteOrder, 
+    handlePostWholesaleOrder, 
+    handleGetWholesaleOrders, 
+    handleDeleteWholesaleOrder,
+    handleCreateRazorpayOrder,
+    handleVerifyPayment,
+    handleCreateWholesaleRazorpayOrder,
+    handleVerifyWholesalePayment
+} from '../controllers/order-controller.js';
 
 const router = Router();
 
 router.post('/orders', protect, checkRole(['customer']), handlePostOrder);
+router.post('/orders/create-razorpay-order', protect, checkRole(['customer']), handleCreateRazorpayOrder);
+router.post('/orders/verify-payment', protect, checkRole(['customer']), handleVerifyPayment);
+
+router.post('/orders/create-wholesale-razorpay-order', protect, checkRole(['retailer']), handleCreateWholesaleRazorpayOrder);
+router.post('/orders/verify-wholesale-payment', protect, checkRole(['retailer']), handleVerifyWholesalePayment);
+
 
 router.get('/orders', protect, checkRole(['customer']), handleGetOrders);
 

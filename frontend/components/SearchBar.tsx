@@ -20,13 +20,15 @@ interface QuickSearchResult {
 
 interface SearchBarProps {
     categories: Category[] | string[]; // A list of categories to show
-    onFilterChange?: (searchTerm: string, categories: string[]) => void; // Updated to send an array
+    onFilterChange?: (searchTerm: string, categories: string[], minPrice?: number, maxPrice?: number) => void; // Updated to send an array
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({ categories, onFilterChange }) => {
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategoryNames, setSelectedCategoryNames] = useState<string[]>([]);
+    const [minPrice, setMinPrice] = useState<number | undefined>(undefined);
+    const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
     const [quickSearchResults, setQuickSearchResults] = useState<QuickSearchResult[]>([]);
     const [showQuickSearch, setShowQuickSearch] = useState(false);
     const [searchLoading, setSearchLoading] = useState(false);
@@ -97,11 +99,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ categories, onFilterChange }) => 
         
         // Call optional callback if provided
         if (onFilterChange) {
-            onFilterChange(searchQuery, newCategories);
+            onFilterChange(searchQuery, newCategories, minPrice, maxPrice);
         }
 
         // Navigate with query params - send category names directly
-        navigateWithFilters(searchQuery, newCategories);
+        navigateWithFilters(searchQuery, newCategories, minPrice, maxPrice);
     };
 
     const handleAppliedSearch = (event: React.FormEvent<HTMLFormElement>) => {
@@ -109,11 +111,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ categories, onFilterChange }) => 
         
         // Call optional callback if provided
         if (onFilterChange) {
-            onFilterChange(searchQuery, selectedCategoryNames);
+            onFilterChange(searchQuery, selectedCategoryNames, minPrice, maxPrice);
         }
 
         // Navigate with query params - send category names directly
-        navigateWithFilters(searchQuery, selectedCategoryNames);
+        navigateWithFilters(searchQuery, selectedCategoryNames, minPrice, maxPrice);
         setShowQuickSearch(false);
     };
 
@@ -124,7 +126,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ categories, onFilterChange }) => 
         setSearchQuery("");
     };
 
-    const navigateWithFilters = (search: string, categoryNames: string[]) => {
+    const navigateWithFilters = (search: string, categoryNames: string[], minP?: number, maxP?: number) => {
         const params = new URLSearchParams();
         
         if (search.trim()) {
@@ -133,6 +135,14 @@ const SearchBar: React.FC<SearchBarProps> = ({ categories, onFilterChange }) => 
         
         if (categoryNames.length > 0) {
             params.set('categories', categoryNames.join(','));
+        }
+
+        if (minP !== undefined) {
+            params.set('minPrice', minP.toString());
+        }
+
+        if (maxP !== undefined) {
+            params.set('maxPrice', maxP.toString());
         }
 
         const queryString = params.toString();
@@ -178,6 +188,10 @@ const SearchBar: React.FC<SearchBarProps> = ({ categories, onFilterChange }) => 
                         categories={getCategoryNames()} 
                         selectedCategories={selectedCategoryNames} 
                         onCategoryChange={handleCategoryChange} 
+                        minPrice={minPrice}
+                        maxPrice={maxPrice}
+                        onMinPriceChange={setMinPrice}
+                        onMaxPriceChange={setMaxPrice}
                     />
                 </div>
 

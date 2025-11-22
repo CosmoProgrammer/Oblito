@@ -12,6 +12,7 @@ import { shopInventory } from '../db/schema/shopInventory.js';
 import { warehouseInventory } from '../db/schema/warehouseInventory.js';
 
 import { updateOrderItemStatusSchema, updatePaymentStatusSchema, orderIdParamSchema, orderItemIdParamSchema } from '../validation/seller-order-validation.js';
+import { sendOrderStatusUpdateEmail } from '../services/email-service.js';
 
 export const handleGetSellerOrders = async (req: any, res: any) => {
     try {
@@ -127,6 +128,42 @@ export const handleUpdateOrderItemStatus = async (req: any, res: any) => {
                 .set({ status: status })
                 .where(eq(orderItems.id, orderItemId));
             
+            // Send email notification
+            const customer = await tx.query.users.findFirst({
+                where: eq(users.id, item.order.customerId),
+                columns: { email: true, firstName: true }
+            });
+
+            if (customer && customer.email) {
+                let productName = 'a product';
+                let inventory;
+                if (item.shopInventoryId) {
+                    inventory = await tx.query.shopInventory.findFirst({
+                        where: eq(shopInventory.id, item.shopInventoryId),
+                        with: { product: { columns: { name: true } } }
+                    });
+                    if (inventory?.product.name) {
+                        productName = inventory.product.name;
+                    }
+                } else if (item.warehouseInventoryId) {
+                    inventory = await tx.query.warehouseInventory.findFirst({
+                        where: eq(warehouseInventory.id, item.warehouseInventoryId),
+                        with: { product: { columns: { name: true } } }
+                    });
+                    if (inventory?.product.name) {
+                        productName = inventory.product.name;
+                    }
+                }
+                
+                sendOrderStatusUpdateEmail(
+                    customer.email,
+                    item.orderId,
+                    status,
+                    productName,
+                    customer.firstName || 'Customer'
+                );
+            }
+
             if (status === 'delivered' && item.order.orderType === 'wholesale') {
                 const retailerId = item.order.customerId;
                 const retailerShop = await tx.query.shops.findFirst({ where: eq(shops.ownerId, retailerId) });

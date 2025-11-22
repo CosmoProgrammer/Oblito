@@ -56,6 +56,8 @@ export default function HomePage() {
   const searchTerm = searchParams.get("search") || "";
   const categoriesParam = searchParams.get("categories") || "";
   const selectedCategories = categoriesParam ? categoriesParam.split(",") : [];
+  const minPrice = searchParams.get("minPrice");
+  const maxPrice = searchParams.get("maxPrice");
 
   useEffect(() => {
     async function fetchUser() {
@@ -99,7 +101,7 @@ export default function HomePage() {
   // Refetch products when search params change
   useEffect(() => {
     fetchProducts(1);
-  }, [searchTerm, categoriesParam]);
+  }, [searchTerm, categoriesParam, minPrice, maxPrice]);
 
   async function fetchProducts(page: number = 1) {
     setLoading(true);
@@ -116,6 +118,14 @@ export default function HomePage() {
         selectedCategories.forEach((catId) => {
           url += `&categories=${encodeURIComponent(catId)}`;
         });
+      }
+
+      // Add minPrice and maxPrice parameters if they exist
+      if (minPrice) {
+        url += `&minPrice=${encodeURIComponent(minPrice)}`;
+      }
+      if (maxPrice) {
+        url += `&maxPrice=${encodeURIComponent(maxPrice)}`;
       }
 
       console.log("🌐 Fetching from:", url);
@@ -240,8 +250,12 @@ export default function HomePage() {
   };
 
   // Get category names for display
-  const getCategoryNames = (names: string[]) => {
-    return names.join(", ");
+  const getCategoryNames = (ids: string[]) => {
+    if (!categories.length) return ids.join(", ");
+    return ids.map(id => {
+      const category = categories.find(cat => cat.id === id);
+      return category ? category.name : id;
+    }).join(", ");
   };
 
   return (
@@ -254,7 +268,7 @@ export default function HomePage() {
       </div>
 
       {/* Active Filters Display */}
-      {(searchTerm || selectedCategories.length > 0) && (
+      {(searchTerm || selectedCategories.length > 0 || minPrice || maxPrice) && (
         <div className="mb-8 bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-start gap-3">
           <Filter className="w-5 h-5 text-[#febd69] mt-0.5 flex-shrink-0" />
           <div className="flex-grow">
@@ -268,6 +282,16 @@ export default function HomePage() {
               {selectedCategories.length > 0 && (
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
                   Categories: {getCategoryNames(selectedCategories)}
+                </span>
+              )}
+              {minPrice && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                  Min Price: ₹{minPrice}
+                </span>
+              )}
+              {maxPrice && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                  Max Price: ₹{maxPrice}
                 </span>
               )}
             </div>
@@ -295,7 +319,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
               <p className="text-gray-500 text-center max-w-md">
-                {searchTerm || selectedCategories.length > 0
+                {searchTerm || selectedCategories.length > 0 || minPrice || maxPrice
                   ? "We couldn't find any products matching your filters. Try adjusting your search or categories."
                   : "No products are currently available."}
               </p>

@@ -633,7 +633,7 @@ This document provides a comprehensive overview of all the API routes available 
 
 ### POST /orders
 
--   **Description**: Creates a new order from the user's cart.
+-   **Description**: **[DEPRECATED]** Creates a new order from the user's cart. This endpoint is deprecated in favor of the Razorpay payment flow.
 -   **Authentication**: Required (JWT, role: 'customer')
 -   **Request Body**:
     ```json
@@ -653,6 +653,57 @@ This document provides a comprehensive overview of all the API routes available 
         ```
     -   **400**: Bad request (e.g., cart is empty, invalid address)
 
+### POST /orders/create-razorpay-order
+
+-   **Description**: Creates a Razorpay order for the current user's cart.
+-   **Authentication**: Required (JWT, role: 'customer')
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "order": {
+            "id": "order_...",
+            "entity": "order",
+            "amount": 10800,
+            "amount_paid": 0,
+            "amount_due": 10800,
+            "currency": "INR",
+            "receipt": "receipt_order_...",
+            "offer_id": null,
+            "status": "created",
+            "attempts": 0,
+            "notes": [],
+            "created_at": 1679491183
+          }
+        }
+        ```
+    -   **400**: Bad request (e.g., cart is empty)
+
+### POST /orders/verify-payment
+
+-   **Description**: Verifies the Razorpay payment and creates the order in the database.
+-   **Authentication**: Required (JWT, role: 'customer')
+-   **Request Body**:
+    ```json
+    {
+      "razorpay_order_id": "order_...",
+      "razorpay_payment_id": "pay_...",
+      "razorpay_signature": "...",
+      "deliveryAddressId": "...",
+      "paymentMethod": "razorpay"
+    }
+    ```
+-   **Response**:
+    -   **201**:
+        ```json
+        {
+          "message": "Order placed successfully",
+          "generatedOrders": 1,
+          "orderIds": ["..."]
+        }
+        ```
+    -   **400**: Invalid payment signature or bad request
+
 ### DELETE /orders/:id
 
 -   **Description**: Cancels an order.
@@ -669,18 +720,58 @@ This document provides a comprehensive overview of all the API routes available 
 
 ## Wholesale Orders
 
-### POST /wholesale-orders
+### POST /orders/create-wholesale-razorpay-order
 
--   **Description**: Creates a new wholesale order.
--   **Authentication**: Required (JWT, role: 'retailer' or 'wholesaler')
+-   **Description**: Creates a Razorpay order for a wholesale purchase.
+-   **Authentication**: Required (JWT, role: 'retailer')
 -   **Request Body**:
     ```json
     {
-      "warehouseId": "...",
-      "productId": "...",
+      "warehouseInventoryId": "...",
+      "quantity": 10
+    }
+    ```
+-   **Response**:
+    -   **200**: Returns the Razorpay order object.
+    -   **400**: Bad request (e.g., validation error, insufficient stock)
+
+### POST /orders/verify-wholesale-payment
+
+-   **Description**: Verifies the Razorpay payment and creates the wholesale order.
+-   **Authentication**: Required (JWT, role: 'retailer')
+-   **Request Body**:
+    ```json
+    {
+      "razorpay_order_id": "order_...",
+      "razorpay_payment_id": "pay_...",
+      "razorpay_signature": "...",
+      "warehouseInventoryId": "...",
       "quantity": 10,
-      "deliveryAddressId": "...",
-      "paymentMethod": "bank_transfer"
+      "shopPrice": 120.00
+    }
+    ```
+-   **Response**:
+    -   **201**:
+        ```json
+        {
+          "message": "Wholesale order placed successfully via Razorpay",
+          "order": { ... }
+        }
+        ```
+    -   **400**: Invalid payment signature or bad request
+
+### POST /wholesale-orders
+
+-   **Description**: Creates a new wholesale order (for non-Razorpay payment methods).
+-   **Authentication**: Required (JWT, role: 'retailer')
+-   **Request Body**:
+    ```json
+    {
+      "warehouseInventoryId": "...",
+      "quantity": 10,
+      "paymentMethod": "cash_on_delivery",
+      "isProxyItem": false,
+      "shopPrice": 120.00
     }
     ```
 -   **Response**:
@@ -688,15 +779,15 @@ This document provides a comprehensive overview of all the API routes available 
         ```json
         {
           "message": "Wholesale order placed successfully",
-          "orderId": "..."
+          "order": { ... }
         }
         ```
     -   **400**: Bad request (e.g., validation error, insufficient stock)
 
 ### GET /wholesale-orders
 
--   **Description**: Retrieves a list of wholesale orders.
--   **Authentication**: Required (JWT, role: 'retailer' or 'wholesaler')
+-   **Description**: Retrieves a list of wholesale orders for the authenticated retailer.
+-   **Authentication**: Required (JWT, role: 'retailer')
 -   **Response**:
     -   **200**:
         ```json
@@ -719,7 +810,7 @@ This document provides a comprehensive overview of all the API routes available 
 ### DELETE /wholesale-orders/:id
 
 -   **Description**: Cancels a wholesale order.
--   **Authentication**: Required (JWT, role: 'retailer' or 'wholesaler')
+-   **Authentication**: Required (JWT, role: 'retailer')
 -   **Response**:
     -   **200**:
         ```json

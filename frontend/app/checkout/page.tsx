@@ -16,7 +16,7 @@ type Address = {
   isPrimary: boolean;
 };
 
-type PaymentMethod = "credit_card" | "upi" | "cash_on_delivery";
+type PaymentMethod = "razorpay" | "cash_on_delivery";
 
 type CartItem = {
   cartItemId: string;
@@ -34,6 +34,14 @@ type OrderSummary = {
   itemCount: number;
 };
 
+type User = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    profilePictureUrl: string | null;
+}
+
 const API_BASE_URL = "http://localhost:8000";
 
 export default function CheckoutPage() {
@@ -41,6 +49,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"address" | "payment" | "review">("address");
+  const [user, setUser] = useState<User | null>(null);
 
   // Address state
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -58,23 +67,38 @@ export default function CheckoutPage() {
   });
 
   // Payment state
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("credit_card");
-  const [cardDetails, setCardDetails] = useState({
-    cardName: "",
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-  });
-  const [upiId, setUpiId] = useState("");
-
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("razorpay");
+  
   // Order state
   const [orderData, setOrderData] = useState<any>(null);
   const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null);
 
   useEffect(() => {
+    const loadRazorpay = () => {
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        document.body.appendChild(script);
+    };
+    loadRazorpay();
     fetchCart();
     fetchAddresses();
+    fetchUser();
   }, []);
+
+  const fetchUser = async () => {
+    try {
+        const res = await fetch(`${API_BASE_URL}/auth/user`, {
+            credentials: 'include',
+        });
+        const data = await res.json();
+        if(res.ok) {
+            setUser(data);
+        }
+    } catch (err) {
+        console.error("Error fetching user:", err);
+    }
+  }
 
   const fetchCart = async () => {
     try {
@@ -294,88 +318,100 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
-      setError("Please select a delivery address");
-      return;
-    }
-    if (!paymentMethod) {
-      setError("Please select a payment method");
-      return;
-    }
-
-    // Validate card details if credit card
-    if (paymentMethod === "credit_card") {
-      if (!cardDetails.cardNumber || !cardDetails.expiryDate || !cardDetails.cvv) {
-        setError("Please enter valid card details");
+        setError("Please select a delivery address");
         return;
-      }
     }
-
-    // Validate UPI if UPI
-    if (paymentMethod === "upi" && !upiId) {
-      setError("Please enter a valid UPI ID");
-      return;
+    if (paymentMethod === 'cash_on_delivery') {
+        // Handle cash on delivery separately
+        console.log("Placing order with cash on delivery");
+        return;
     }
 
     setLoading(true);
     setError(null);
     try {
-      // Calculate and store order summary BEFORE clearing cart
-      const subtotal = cartItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
-      const tax = subtotal * 0.08;
-      const orderSum: OrderSummary = {
-        subtotal,
-        tax,
-        total: subtotal + tax,
-        itemCount: cartItems.length,
-      };
+        const createOrderRes = await fetch(`${API_BASE_URL}/orders/create-razorpay-order`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+        });
 
-      // Prepare order payload
-      const orderPayload = {
-        deliveryAddressId: selectedAddress,
-        paymentMethod: paymentMethod,
-      };
+        const createOrderData = await createOrderRes.json();
 
-      console.log("Placing order with payload:", orderPayload);
+        if (!createOrderRes.ok) {
+            throw new Error(createOrderData.message || "Failed to create Razorpay order");
+        }
 
-      // POST order to backend
-      const res = await fetch(`${API_BASE_URL}/orders`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(orderPayload),
-      });
+        const { order: razorpayOrder } = createOrderData;
 
-      const data = await res.json();
-      console.log("Order response:", res.status, data);
+        const options = {
+            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency,
+            name: "Oblito",
+            description: "Order Payment",
+            order_id: razorpayOrder.id,
+            handler: async function (response: any) {
+                const verifyPayload = {
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                    deliveryAddressId: selectedAddress,
+                    paymentMethod: 'razorpay'
+                };
 
-      if (res.ok) {
-        setError(null);
-        
-        // Store order summary BEFORE clearing cart
-        setOrderSummary(orderSum);
-        
-        // Clear cart after storing summary
-        setCartItems([]);
-        
-        setStep("review");
+                const verifyRes = await fetch(`${API_BASE_URL}/orders/verify-payment`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                    },
+                    body: JSON.stringify(verifyPayload),
+                });
 
-        // Fetch the created order data
-        await fetchAndSetOrderData();
-      } else {
-        const errorMsg = data.message || data.error || "Failed to place order";
-        setError(errorMsg);
-        console.error("Order error:", data);
-      }
+                const verifyData = await verifyRes.json();
+
+                if (verifyRes.ok) {
+                    const subtotal = cartItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+                    const tax = subtotal * 0.08;
+                    const orderSum: OrderSummary = {
+                        subtotal,
+                        tax,
+                        total: subtotal + tax,
+                        itemCount: cartItems.length,
+                    };
+                    setOrderSummary(orderSum);
+                    setCartItems([]);
+                    setStep("review");
+                    await fetchAndSetOrderData();
+                } else {
+                    setError(verifyData.message || "Payment verification failed");
+                }
+            },
+            prefill: {
+                name: user ? `${user.firstName} ${user.lastName}` : "",
+                email: user ? user.email : "",
+            },
+            theme: {
+                color: "#3399cc"
+            }
+        };
+        //@ts-ignore
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+
     } catch (err: any) {
-      console.error("Error placing order:", err);
-      setError(err.message || "Failed to place order");
+        console.error("Error placing order:", err);
+        setError(err.message || "Failed to place order");
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
+
 
   const fetchAndSetOrderData = async () => {
     try {
@@ -645,106 +681,22 @@ export default function CheckoutPage() {
                   </h2>
 
                   <div className="grid grid-cols-1 gap-4">
-                    {/* Credit Card */}
-                    <label className={`flex items-center p-5 border-2 rounded-2xl cursor-pointer transition-all ${paymentMethod === "credit_card" ? "border-gray-700 bg-gray-700/5" : "border-gray-100 hover:border-gray-200"}`}>
+                    <label className={`flex items-center p-5 border-2 rounded-2xl cursor-pointer transition-all ${paymentMethod === "razorpay" ? "border-gray-700 bg-gray-700/5" : "border-gray-100 hover:border-gray-200"}`}>
                       <input
                         type="radio"
                         name="payment"
-                        value="credit_card"
-                        checked={paymentMethod === "credit_card"}
+                        value="razorpay"
+                        checked={paymentMethod === "razorpay"}
                         onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                         className="w-5 h-5 text-gray-700 focus:ring-gray-400 mr-4"
                       />
                       <div className="flex-1">
-                        <p className="font-bold text-gray-900">Credit Card</p>
-                        <p className="text-sm text-gray-500">Visa, Mastercard, or American Express</p>
+                        <p className="font-bold text-gray-900">Razorpay</p>
+                        <p className="text-sm text-gray-500">Pay securely with Razorpay</p>
                       </div>
                       <CreditCard className="w-6 h-6 text-gray-400" />
                     </label>
 
-                    {paymentMethod === "credit_card" && (
-                      <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 space-y-4 animate-in fade-in slide-in-from-top-2">
-                        <div className="space-y-2">
-                          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Cardholder Name</label>
-                          <input
-                            type="text"
-                            value={cardDetails.cardName}
-                            onChange={(e) => setCardDetails({ ...cardDetails, cardName: e.target.value })}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-400 outline-none"
-                            placeholder="John Doe"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Card Number</label>
-                          <input
-                            type="text"
-                            maxLength={16}
-                            value={cardDetails.cardNumber}
-                            onChange={(e) => setCardDetails({ ...cardDetails, cardNumber: e.target.value.replace(/\D/g, "") })}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-400 outline-none font-mono"
-                            placeholder="0000 0000 0000 0000"
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Expiry</label>
-                            <input
-                              type="text"
-                              maxLength={5}
-                              value={cardDetails.expiryDate}
-                              onChange={(e) => setCardDetails({ ...cardDetails, expiryDate: e.target.value })}
-                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-400 outline-none font-mono"
-                              placeholder="MM/YY"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">CVV</label>
-                            <input
-                              type="text"
-                              maxLength={3}
-                              value={cardDetails.cvv}
-                              onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value.replace(/\D/g, "") })}
-                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-400 outline-none font-mono"
-                              placeholder="123"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* UPI */}
-                    <label className={`flex items-center p-5 border-2 rounded-2xl cursor-pointer transition-all ${paymentMethod === "upi" ? "border-gray-700 bg-gray-700/5" : "border-gray-100 hover:border-gray-200"}`}>
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="upi"
-                        checked={paymentMethod === "upi"}
-                        onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                        className="w-5 h-5 text-gray-700 focus:ring-gray-400 mr-4"
-                      />
-                      <div className="flex-1">
-                        <p className="font-bold text-gray-900">UPI</p>
-                        <p className="text-sm text-gray-500">Google Pay, PhonePe, Paytm</p>
-                      </div>
-                      <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center font-bold text-xs text-gray-600">UPI</div>
-                    </label>
-
-                    {paymentMethod === "upi" && (
-                      <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 animate-in fade-in slide-in-from-top-2">
-                        <div className="space-y-2">
-                          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">UPI ID</label>
-                          <input
-                            type="text"
-                            value={upiId}
-                            onChange={(e) => setUpiId(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-400 outline-none"
-                            placeholder="username@upi"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Cash on Delivery */}
                     <label className={`flex items-center p-5 border-2 rounded-2xl cursor-pointer transition-all ${paymentMethod === "cash_on_delivery" ? "border-gray-700 bg-gray-700/5" : "border-gray-100 hover:border-gray-200"}`}>
                       <input
                         type="radio"
@@ -908,3 +860,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+

@@ -4,7 +4,8 @@ import { ProductInteractions } from './ProductInteractions';
 import { ProductReviews } from './ProductReview';
 import { useEffect, useState } from 'react';
 import { use } from 'react';
-import { Store, Package } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface Category {
   id: string;
@@ -17,8 +18,8 @@ type Product = {
   price: string;
   categoryId: string;
   description: string;
-  shopName?: string;
-  stockQuantity?: string | number;
+  shopName?: string; // Add shopName to Product type
+  stockQuantity?: string; // Add stockQuantity to Product type
   [key: string]: any;
 };
 
@@ -31,6 +32,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const [categoryName, setCategoryName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     async function fetchCategories() {
@@ -126,9 +128,9 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         
         {/* Breadcrumb / Category */}
         <nav className="mb-8 text-sm font-medium text-gray-500">
-          <span className="hover:text-gray-900 cursor-pointer">Home</span>
+          <Link href="/home" className="hover:text-gray-900">Home</Link>
           <span className="mx-2">/</span>
-          <span className="hover:text-gray-900 cursor-pointer">{categoryName || 'Category'}</span>
+          <Link href={`/home?categories=${product.categoryId}`} className="hover:text-gray-900">{categoryName || 'Category'}</Link>
           <span className="mx-2">/</span>
           <span className="text-gray-900">{product.name}</span>
         </nav>
@@ -164,22 +166,19 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 
                 <div className="flex items-baseline gap-4 mb-8 border-b border-gray-100 pb-8">
                   <span className="text-4xl font-bold text-gray-900">${product.price}</span>
-                  <div className="flex flex-col gap-2">
-                    {isOutOfStock ? (
-                      <span className="text-red-600 font-bold bg-red-50 px-3 py-1 rounded text-sm">Out of Stock</span>
-                    ) : isLowStock ? (
-                      <span className="text-orange-600 font-bold bg-orange-50 px-3 py-1 rounded text-sm">Only {stockQuantity} left!</span>
-                    ) : (
-                      <span className="text-green-600 font-medium bg-green-50 px-3 py-1 rounded text-sm">In Stock</span>
-                    )}
-                  </div>
+                  {product.stockQuantity && parseInt(product.stockQuantity) > 0 ? (
+                    <span className="text-green-600 font-medium bg-green-50 px-2 py-1 rounded text-sm">In Stock: {product.stockQuantity}</span>
+                  ) : (
+                    <span className="text-red-600 font-medium bg-red-50 px-2 py-1 rounded text-sm">Out of Stock</span>
+                  )}
                 </div>
 
-                {/* Stock Quantity Display - Subtle */}
-                <div className="mb-8 flex items-center gap-2 text-sm text-gray-600">
-                  <Package className="w-4 h-4 text-gray-400" />
-                  <span className="font-medium">{stockQuantity} available</span>
-                </div>
+                {product.shopName && (
+                  <div className="mb-4">
+                    <span className="text-gray-700 text-sm">Sold by: </span>
+                    <span className="font-medium text-gray-900">{product.shopName}</span>
+                  </div>
+                )}
 
                 <div className="prose prose-gray max-w-none mb-8 text-gray-600">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">About this item</h3>

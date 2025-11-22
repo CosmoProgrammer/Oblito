@@ -5,7 +5,9 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
 import { toast } from "sonner";
-import { Loader2 } from 'lucide-react';
+import { Loader2, CreditCard } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Label } from './ui/label';
 
 const API_BASE_URL = "http://localhost:8000";
 
@@ -24,6 +26,15 @@ interface Pagination {
     currentPage: number;
     limit: number;
 }
+type User = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    profilePictureUrl: string | null;
+}
+type PaymentMethod = "razorpay" | "cash_on_delivery";
+
 
 export function AddFromWholesaler({ onClose, onProductAdded }: { onClose: () => void; onProductAdded: () => void; }) {
     const [products, setProducts] = useState<WarehouseProduct[]>([]);
@@ -31,12 +42,24 @@ export function AddFromWholesaler({ onClose, onProductAdded }: { onClose: () => 
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
+    const [user, setUser] = useState<User | null>(null);
 
     const [selectedProduct, setSelectedProduct] = useState<WarehouseProduct | null>(null);
     const [listingDetails, setListingDetails] = useState({ price: '', stockQuantity: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("razorpay");
+
     
     useEffect(() => {
+        const loadRazorpay = () => {
+            const script = document.createElement("script");
+            script.src = "https://checkout.razorpay.com/v1/checkout.js";
+            script.async = true;
+            document.body.appendChild(script);
+        };
+        loadRazorpay();
+        fetchUser();
+
         const fetchProducts = async () => {
             setLoading(true);
             try {
@@ -63,6 +86,20 @@ export function AddFromWholesaler({ onClose, onProductAdded }: { onClose: () => 
 
     }, [page, searchTerm]);
 
+    const fetchUser = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/auth/user`, {
+                credentials: 'include',
+            });
+            const data = await res.json();
+            if(res.ok) {
+                setUser(data);
+            }
+        } catch (err) {
+            console.error("Error fetching user:", err);
+        }
+    }
+
     const handleAddClick = (product: WarehouseProduct) => {
         setSelectedProduct(product);
         setListingDetails({ price: '', stockQuantity: '' });
@@ -75,33 +112,110 @@ export function AddFromWholesaler({ onClose, onProductAdded }: { onClose: () => 
         }
 
         setIsSubmitting(true);
-        try {
-            const res = await fetch(`${API_BASE_URL}/wholesale-orders`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    warehouseInventoryId: selectedProduct.id,
-                    quantity: parseInt(listingDetails.stockQuantity),
-                    paymentMethod: 'cash_on_delivery', // Default for wholesale orders
-                    isProxyItem: false,
-                }),
-            });
-            if (!res.ok) {
-                 const errorData = await res.json();
-                 throw new Error(errorData.message || "Failed to create listing.");
-            }
-            
-            toast.success(`Successfully listed ${selectedProduct.name}!`);
-            setSelectedProduct(null);
-            onProductAdded(); // This will trigger a refresh in the dashboard
-            onClose();
 
-        } catch (error: any) {
-            console.error(error);
-            toast.error(error.message);
-        } finally {
-            setIsSubmitting(false);
+        if (paymentMethod === 'razorpay') {
+            try {
+                const createOrderRes = await fetch(`${API_BASE_URL}/orders/create-wholesale-razorpay-order`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        warehouseInventoryId: selectedProduct.id,
+                        quantity: parseInt(listingDetails.stockQuantity),
+                    }),
+                });
+
+                const createOrderData = await createOrderRes.json();
+                if (!createOrderRes.ok) {
+                    throw new Error(createOrderData.message || "Failed to create Razorpay order");
+                }
+
+                const { order: razorpayOrder } = createOrderData;
+
+                const options = {
+                    key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                    amount: razorpayOrder.amount,
+                    currency: razorpayOrder.currency,
+                    name: "Oblito Wholesale",
+                    description: `Payment for ${selectedProduct.name}`,
+                    order_id: razorpayOrder.id,
+                    handler: async function (response: any) {
+                        const verifyPayload = {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                            warehouseInventoryId: selectedProduct.id,
+                            quantity: parseInt(listingDetails.stockQuantity),
+                            shopPrice: parseFloat(listingDetails.price)
+                        };
+
+                        const verifyRes = await fetch(`${API_BASE_URL}/orders/verify-wholesale-payment`, {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(verifyPayload),
+                        });
+
+                        const verifyData = await verifyRes.json();
+
+                        if (verifyRes.ok) {
+                            toast.success(`Successfully listed ${selectedProduct.name}!`);
+                            setSelectedProduct(null);
+                            onProductAdded();
+                            onClose();
+                        } else {
+                            toast.error(verifyData.message || "Payment verification failed");
+                        }
+                    },
+                    prefill: {
+                        name: user ? `${user.firstName} ${user.lastName}` : "",
+                        email: user ? user.email : "",
+                    },
+                    theme: {
+                        color: "#3399cc"
+                    }
+                };
+                //@ts-ignore
+                const rzp = new window.Razorpay(options);
+                rzp.open();
+
+            } catch (error: any) {
+                console.error(error);
+                toast.error(error.message);
+            } finally {
+                setIsSubmitting(false);
+            }
+        } else {
+            // Handle other payment methods like cash on delivery
+            try {
+                const res = await fetch(`${API_BASE_URL}/wholesale-orders`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        warehouseInventoryId: selectedProduct.id,
+                        quantity: parseInt(listingDetails.stockQuantity),
+                        paymentMethod: 'cash_on_delivery',
+                        isProxyItem: false,
+                        shopPrice: parseFloat(listingDetails.price)
+                    }),
+                });
+                if (!res.ok) {
+                     const errorData = await res.json();
+                     throw new Error(errorData.message || "Failed to create listing.");
+                }
+                
+                toast.success(`Successfully listed ${selectedProduct.name}!`);
+                setSelectedProduct(null);
+                onProductAdded(); 
+                onClose();
+    
+            } catch (error: any) {
+                console.error(error);
+                toast.error(error.message);
+            } finally {
+                setIsSubmitting(false);
+            }
         }
     };
     
@@ -171,15 +285,41 @@ export function AddFromWholesaler({ onClose, onProductAdded }: { onClose: () => 
                                 />
                             </div>
                         </div>
+
+                        <div className="space-y-2">
+                            <Label>Payment Method</Label>
+                            <RadioGroup
+                                value={paymentMethod}
+                                onValueChange={(value: any) => setPaymentMethod(value)}
+                                className="flex gap-4"
+                            >
+                                <Label htmlFor="razorpay" className={`flex items-center gap-2 border rounded-md p-3 w-full cursor-pointer ${paymentMethod === 'razorpay' ? 'border-blue-500' : ''}`}>
+                                    <RadioGroupItem value="razorpay" id="razorpay"/>
+                                    <CreditCard className="w-5 h-5"/>
+                                    <span>Razorpay</span>
+                                </Label>
+                                <Label htmlFor="cod" className={`flex items-center gap-2 border rounded-md p-3 w-full cursor-pointer ${paymentMethod === 'cash_on_delivery' ? 'border-blue-500' : ''}`}>
+                                    <RadioGroupItem value="cash_on_delivery" id="cod"/>
+                                    <span>Cash on Delivery</span>
+                                </Label>
+                            </RadioGroup>
+                        </div>
                     </div>
                     <DialogFooter>
                         <DialogClose asChild>
                             <Button variant="outline">Cancel</Button>
                         </DialogClose>
-                        <Button onClick={handleConfirmListing} disabled={isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Confirm Listing
-                        </Button>
+                        {paymentMethod === 'razorpay' ? (
+                            <Button onClick={handleConfirmListing} disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Pay with Razorpay
+                            </Button>
+                        ) : (
+                            <Button onClick={handleConfirmListing} disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Confirm Listing
+                            </Button>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
