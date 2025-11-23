@@ -107,6 +107,7 @@ const Navbar = () => {
                             <SearchBar 
                                 onFilterChange={onFilterChange} 
                                 categories={categories}
+                                user={user}
                             />
                         )}
                     </div>
@@ -172,6 +173,7 @@ const Navbar = () => {
                             {categories.length > 0 && (
                                 <SearchBar 
                                     categories={categories}
+                                    user={user}
                                 />
                             )}
                         </div>

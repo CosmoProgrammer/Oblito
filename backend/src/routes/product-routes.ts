@@ -1,9 +1,9 @@
 import { Router } from 'express';
 
-import { protect } from "../middleware/auth-middleware.js";
+import { protect, optionalAuth } from "../middleware/auth-middleware.js";
 import { checkRole } from '../middleware/role-middleware.js';
 
-import { handleGetUploadUrl, getAllProducts, getProductById, createProduct, getAllWholesaleProducts, getWarehouseProductById, patchProductById, getQuickSearchResults, getQuickWholesaleSearchResults } from '../controllers/product-controller.js';
+import { handleGetUploadUrl, getAllProducts, getProductById, createProduct, getAllWholesaleProducts, getWarehouseProductById, patchProductById, getQuickSearchResults, getQuickWholesaleSearchResults, getRecommendedProducts } from '../controllers/product-controller.js';
 
 const router = Router();
 
@@ -11,7 +11,9 @@ router.get('/products/upload-url', protect, checkRole(['wholesaler', 'retailer']
 
 router.get('/products', getAllProducts);
 
-router.get('/products/:id', getProductById);
+router.get('/recommendations', protect, getRecommendedProducts);
+
+router.get('/products/:id', optionalAuth, getProductById);
 
 router.post('/products', protect, checkRole(['wholesaler', 'retailer']), createProduct);
 

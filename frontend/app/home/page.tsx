@@ -3,7 +3,7 @@
 import ProductCard from "@/components/ProductCard";
 import { useEffect, useState } from "react";
 import { setCategoryMap } from "@/app/utils/categoryMap";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Pagination,
   PaginationContent,
@@ -40,8 +40,10 @@ interface Category {
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [pagination, setPagination] = useState<PaginationData>({
@@ -51,6 +53,7 @@ export default function HomePage() {
     limit: 12,
   });
   const [loading, setLoading] = useState(true);
+  const [userChecked, setUserChecked] = useState(false); // New state to track user check
 
   // Get search and category filters from URL params
   const searchTerm = searchParams.get("search") || "";
@@ -58,9 +61,10 @@ export default function HomePage() {
   const selectedCategories = categoriesParam ? categoriesParam.split(",") : [];
   const minPrice = searchParams.get("minPrice");
   const maxPrice = searchParams.get("maxPrice");
+  const recommended = searchParams.get("recommended");
 
   useEffect(() => {
-    async function fetchUser() {
+    async function fetchInitialData() {
       try {
         const res = await fetch(`http://localhost:8000/auth/user`, {
           credentials: "include",
@@ -68,15 +72,18 @@ export default function HomePage() {
         });
         if (res.ok) {
           const data = await res.json();
-          console.log("User fetched:", data);
-          setUser(data.user.firstName);
+          setUser(data.user.id);
+          setUsername(data.user.firstName);
+        } else {
+          setUser(null);
         }
       } catch (err) {
         console.error("Error fetching user:", err);
+        setUser(null);
+      } finally {
+        setUserChecked(true); // Mark user check as complete
       }
-    }
 
-    async function fetchCategories() {
       try {
         const res = await fetch(`http://localhost:8000/categories`, {
           credentials: "include",
@@ -84,7 +91,6 @@ export default function HomePage() {
         });
         if (res.ok) {
           const data = await res.json();
-          console.log("Categories fetched:", data);
           setCategories(data);
           setCategoryMap(data);
         }
@@ -93,39 +99,37 @@ export default function HomePage() {
       }
     }
     
-    fetchUser();
-    fetchCategories();
-    fetchProducts(1);
+    fetchInitialData();
   }, []);
 
-  // Refetch products when search params change
+  // Refetch products when search params change OR after initial user check
   useEffect(() => {
-    fetchProducts(1);
-  }, [searchTerm, categoriesParam, minPrice, maxPrice]);
+    if (userChecked) {
+      fetchProducts(1);
+    }
+  }, [searchParams, userChecked]);
 
   async function fetchProducts(page: number = 1) {
     setLoading(true);
     try {
-      let url = `http://localhost:8000/products?page=${page}&limit=${pagination.limit}`;
+      let url = '';
+      const params = new URLSearchParams();
+      params.set('page', page.toString());
+      params.set('limit', pagination.limit.toString());
 
-      // Add search parameter if exists
-      if (searchTerm.trim()) {
-        url += `&search=${encodeURIComponent(searchTerm)}`;
-      }
-
-      // Add category parameters if exist
-      if (selectedCategories.length > 0) {
-        selectedCategories.forEach((catId) => {
-          url += `&categories=${encodeURIComponent(catId)}`;
-        });
-      }
-
-      // Add minPrice and maxPrice parameters if they exist
-      if (minPrice) {
-        url += `&minPrice=${encodeURIComponent(minPrice)}`;
-      }
-      if (maxPrice) {
-        url += `&maxPrice=${encodeURIComponent(maxPrice)}`;
+      if (recommended === 'true' && user) {
+        url = `http://localhost:8000/recommendations?${params.toString()}`;
+      } else {
+        if (recommended) {
+            const newParams = new URLSearchParams(searchParams.toString());
+            newParams.delete('recommended');
+            router.replace(`/home?${newParams.toString()}`);
+        }
+        if (searchTerm.trim()) params.set('search', searchTerm);
+        if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
+        if (minPrice) params.set('minPrice', minPrice);
+        if (maxPrice) params.set('maxPrice', maxPrice);
+        url = `http://localhost:8000/products?${params.toString()}`;
       }
 
       console.log("🌐 Fetching from:", url);
@@ -258,22 +262,31 @@ export default function HomePage() {
     }).join(", ");
   };
 
+  const isAnyFilterActive = searchTerm || selectedCategories.length > 0 || minPrice || maxPrice || recommended;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Discover Products</h1>
-          {user && <p className="text-gray-500 mt-1">Welcome back, {user}</p>}
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+            {recommended === 'true' && user ? 'Recommended For You' : 'Discover Products'}
+          </h1>
+          {user && <p className="text-gray-500 mt-1">Welcome back, {username}</p>}
         </div>
       </div>
 
       {/* Active Filters Display */}
-      {(searchTerm || selectedCategories.length > 0 || minPrice || maxPrice) && (
+      {isAnyFilterActive && (
         <div className="mb-8 bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-start gap-3">
           <Filter className="w-5 h-5 text-[#febd69] mt-0.5 flex-shrink-0" />
           <div className="flex-grow">
             <h3 className="font-semibold text-gray-900 mb-2 text-sm uppercase tracking-wide">Active Filters</h3>
             <div className="flex flex-wrap gap-2">
+              {recommended === 'true' && (
+                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                  Recommended
+                </span>
+              )}
               {searchTerm && (
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
                   Search: {searchTerm}
@@ -319,7 +332,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
               <p className="text-gray-500 text-center max-w-md">
-                {searchTerm || selectedCategories.length > 0 || minPrice || maxPrice
+                {isAnyFilterActive
                   ? "We couldn't find any products matching your filters. Try adjusting your search or categories."
                   : "No products are currently available."}
               </p>

@@ -8,7 +8,8 @@ import { users } from '../db/schema/users.js';
 import { products } from '../db/schema/products.js';
 import { categories } from '../db/schema/categories.js';
 import { warehouses } from '../db/schema/warehouses.js';
-import { shops } from '../db/schema.js';
+import { browsingHistory } from '../db/schema/browsingHistory.js';
+import { shops } from '../db/schema/shops.js';
 import { shopInventory } from '../db/schema/shopInventory.js';
 import { warehouseInventory } from '../db/schema/warehouseInventory.js';
 
@@ -29,10 +30,105 @@ export const handleGetUploadUrl = async (req: any, res: any) => {
         if (e instanceof z.ZodError) {
             return res.status(400).json({ errors: e.issues });
         }
-        console.error('Error fetching product by ID:', e);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-};
+                console.error('Error fetching product by ID:', e);
+                res.status(500).json({ message: 'Internal server error' });
+            }
+}
+        
+        export const getRecommendedProducts = async (req: any, res: any) => {
+            try {
+                const { page = 1, limit = 10 } = z.object({
+                    page: z.coerce.number().int().min(1).optional().default(1),
+                    limit: z.coerce.number().int().min(1).max(100).optional().default(10),
+                }).parse(req.query);
+                const offset = (page - 1) * limit;
+                const userId = req.user.id;
+        
+                const viewedProducts = await db.select({
+                        productId: browsingHistory.productId
+                    })
+                    .from(browsingHistory)
+                    .where(eq(browsingHistory.userId, userId))
+                    .orderBy(desc(browsingHistory.viewedAt))
+                    .limit(5);
+        
+                if (viewedProducts.length === 0) {
+                    return res.json({
+                        products: [],
+                        pagination: { totalCount: 0, totalPages: 0, currentPage: 1, limit }
+                    });
+                }
+        
+                const viewedProductIds = viewedProducts.map(p => p.productId);
+        
+                const viewedCategories = await db.selectDistinct({
+                        categoryId: products.categoryId
+                    })
+                    .from(shopInventory)
+                    .innerJoin(products, eq(shopInventory.productId, products.id))
+                    .where(inArray(shopInventory.id, viewedProductIds));
+        
+                if (viewedCategories.length === 0) {
+                    return res.json({
+                        products: [],
+                        pagination: { totalCount: 0, totalPages: 0, currentPage: 1, limit }
+                    });
+                }
+                const viewedCategoryIds = viewedCategories.map(c => c.categoryId).filter((c): c is string => c !== null);;
+        
+                        const whereClause = inArray(products.categoryId, viewedCategoryIds);        
+                const recommendationsQuery = db.select({
+                        id: shopInventory.id,
+                        name: products.name,
+                        description: products.description,
+                        price: shopInventory.price,
+                        categoryId: products.categoryId,
+                        imageURLs: products.imageURLs,
+                        creatorId: products.creatorId,
+                        createdAt: products.createdAt,
+                        stockQuantity: shopInventory.stockQuantity,
+                        shopName: shops.name,
+                    })
+                    .from(shopInventory)
+                    .innerJoin(products, eq(shopInventory.productId, products.id))
+                    .innerJoin(shops, eq(shopInventory.shopId, shops.id))
+                    .where(whereClause)
+                    .limit(limit)
+                    .offset(offset);
+        
+                const totalCountQuery = db.select({
+                        count: sql<number>`count(*)`
+                    })
+                    .from(shopInventory)
+                    .innerJoin(products, eq(shopInventory.productId, products.id))
+                    .where(whereClause);
+        
+                const [recommendations, totalCountResult] = await Promise.all([
+                    recommendationsQuery,
+                    totalCountQuery
+                ]);
+        
+                const totalCount = totalCountResult[0]?.count || 0;
+                const totalPages = Math.ceil(totalCount / limit);
+        
+                res.json({
+                    products: recommendations,
+                    pagination: {
+                        totalCount,
+                        totalPages,
+                        currentPage: page,
+                        limit
+                    }
+                });
+        
+            } catch (e) {
+                if (e instanceof z.ZodError) {
+                    return res.status(400).json({ errors: e.issues });
+                }
+                console.error('Error fetching recommendations:', e);
+                res.status(500).json({ message: 'Internal server error' });
+            }
+        };
 
 export const getAllProducts = async (req: any, res: any) => {
     try{
@@ -209,6 +305,19 @@ export const getProductById = async (req: any, res: any) => {
         if (!listing) {
             return res.status(404).json({ message: 'Product not found' });
         }
+
+        if (listing && req.user) {
+            // Fire-and-forget to not slow down the user's response.
+            db.insert(browsingHistory).values({
+                userId: req.user.id,
+                productId: shopInventoryId,
+            }).then(() => {
+                console.log(`Recorded browsing history for user ${req.user.id} and product ${shopInventoryId}`);
+            }).catch(err => {
+                console.error('Error recording browsing history:', err);
+            });
+        }
+
         res.json({ 
             product: {
                 id: req.params.id,
