@@ -43,6 +43,7 @@ export default function HomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [pagination, setPagination] = useState<PaginationData>({
@@ -72,6 +73,7 @@ export default function HomePage() {
         if (res.ok) {
           const data = await res.json();
           setUser(data.user.id);
+          setUsername(data.user.firstName);
         } else {
           setUser(null);
         }
@@ -269,7 +271,7 @@ export default function HomePage() {
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
             {recommended === 'true' && user ? 'Recommended For You' : 'Discover Products'}
           </h1>
-          {user && <p className="text-gray-500 mt-1">Welcome back, {user}</p>}
+          {user && <p className="text-gray-500 mt-1">Welcome back, {username}</p>}
         </div>
       </div>
 
