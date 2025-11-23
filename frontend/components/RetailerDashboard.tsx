@@ -381,7 +381,7 @@ export default function RetailerDashboard() {
 
       {/* --- SUMMARY CARDS --- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle>Total Sales</CardTitle><DollarSign className="h-5 w-5 text-green-500" /></CardHeader><CardContent><p className="text-2xl font-bold">${summaryStats.totalSales.toFixed(2)}</p><p className="text-sm text-gray-500">This year</p></CardContent></Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle>Total Sales</CardTitle><DollarSign className="h-5 w-5 text-green-500" /></CardHeader><CardContent><p className="text-2xl font-bold">₹{summaryStats.totalSales.toFixed(2)}</p><p className="text-sm text-gray-500">This year</p></CardContent></Card>
         <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle>Orders</CardTitle><ShoppingBag className="h-5 w-5 text-blue-500" /></CardHeader><CardContent><p className="text-2xl font-bold">{summaryStats.orderCount}</p><p className="text-sm text-gray-500">Total orders</p></CardContent></Card>
         <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle>Products</CardTitle><Package className="h-5 w-5 text-orange-500" /></CardHeader><CardContent><p className="text-2xl font-bold">{summaryStats.productCount}</p><p className="text-sm text-gray-500">Total products in shop</p></CardContent></Card>
         <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle>Pending Orders</CardTitle><Clock className="h-5 w-5 text-purple-500" /></CardHeader><CardContent><p className="text-2xl font-bold">{summaryStats.pendingOrders}</p><p className="text-sm text-gray-500">Require action</p></CardContent></Card>
@@ -447,7 +447,7 @@ export default function RetailerDashboard() {
                                                                                     <img src={item.shopInventory.product.imageURLs[0]} alt={item.shopInventory.product.name} className="w-10 h-10 rounded-lg bg-gray-200 object-cover" />
                                                                                     <div>
                                                                                         <p className="font-medium text-gray-800">{item.shopInventory.product.name}</p>
-                                                                                        <p className="text-xs text-gray-500">Qty: {item.quantity} · ${item.priceAtPurchase}</p>
+                                                                                        <p className="text-xs text-gray-500">Qty: {item.quantity} · ₹{item.priceAtPurchase}</p>
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="flex items-center gap-2">
@@ -476,7 +476,7 @@ export default function RetailerDashboard() {
                         </Card>
                     </TabsContent>
         <TabsContent value="inventory"><Card><CardHeader><CardTitle>Inventory Status</CardTitle></CardHeader><CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{inventory.map((item) => (<Card key={item.id} className="p-4"><CardTitle className="text-sm">{item.name}</CardTitle><p className={`mt-2 font-medium ${parseInt(item.stockQuantity) < 10 ? "text-red-500" : "text-green-600"}`}>{item.stockQuantity} in stock</p><Button onClick={() => handleRestockClick(item)} className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-4">{item.warehouseInventoryId ? 'Restock from Wholesaler' : 'Manual Restock'}</Button></Card>))}</CardContent></Card></TabsContent>
-        <TabsContent value="wholesale"><Card><CardHeader><CardTitle>Wholesale Orders</CardTitle></CardHeader><CardContent><table className="w-full text-sm"><thead><tr className="text-left border-b"><th className="py-2">Order ID</th><th>Date</th><th>Wholesaler</th><th>Items</th><th>Total</th><th>Status</th></tr></thead><tbody>{wholesaleOrders.map((order) => (<tr key={order.id} className="border-b hover:bg-gray-50"><td className="py-2 font-mono text-xs">{order.id.substring(0, 8)}...</td><td>{new Date(order.createdAt).toLocaleDateString()}</td><td>{order.warehouse?.name || 'N/A'}</td><td>{order.orderItems.map(item => `${item.quantity}x ${item.warehouseInventory.product.name}`).join(', ')}</td><td>${parseFloat(order.totalAmount).toFixed(2)}</td><td><span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColorClass(order.status)}`}>{order.status}</span></td></tr>))}</tbody></table></CardContent></Card></TabsContent>
+        <TabsContent value="wholesale"><Card><CardHeader><CardTitle>Wholesale Orders</CardTitle></CardHeader><CardContent><table className="w-full text-sm"><thead><tr className="text-left border-b"><th className="py-2">Order ID</th><th>Date</th><th>Wholesaler</th><th>Items</th><th>Total</th><th>Status</th></tr></thead><tbody>{wholesaleOrders.map((order) => (<tr key={order.id} className="border-b hover:bg-gray-50"><td className="py-2 font-mono text-xs">{order.id.substring(0, 8)}...</td><td>{new Date(order.createdAt).toLocaleDateString()}</td><td>{order.warehouse?.name || 'N/A'}</td><td>{order.orderItems.map(item => `${item.quantity}x ${item.warehouseInventory.product.name}`).join(', ')}</td><td>₹{parseFloat(order.totalAmount).toFixed(2)}</td><td><span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColorClass(order.status)}`}>{order.status}</span></td></tr>))}</tbody></table></CardContent></Card></TabsContent>
       </Tabs>
 
         {/* --- DIALOGS --- */}
@@ -499,7 +499,7 @@ export default function RetailerDashboard() {
                 </div>
                  {restockMode === 'wholesale' && (
                     <div>
-                        <Label htmlFor="restock-price">Your Selling Price ($)</Label>
+                        <Label htmlFor="restock-price">Your Selling Price (₹)</Label>
                         <Input id="restock-price" type="number" value={restockPrice} onChange={(e) => setRestockPrice(parseFloat(e.target.value) || 0)} />
                     </div>
                 )}
