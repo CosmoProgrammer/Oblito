@@ -60,7 +60,16 @@ Obviously, changes to `.env` also require container restarts.
     \dt
     \d <table_name>
     \q
+    ```
+
+4. You can use this command to set up a backup file of all the data in the database
+
+    ```powershell
     docker-compose exec -T db pg_dump -U oblito_user oblito_db > backup.sql
+    ```
+
+    You can use this command to recover all the data from the database
+    ```powershell
     docker-compose exec -T db psql -U oblito_user oblito_db < backup.sql
     ```
 
