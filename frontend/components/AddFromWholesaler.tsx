@@ -239,7 +239,7 @@ export function AddFromWholesaler({ onClose, onProductAdded }: { onClose: () => 
                             <img src={product.imageURLs?.[0] || '/placeholder.svg'} alt={product.name} className="w-full h-32 object-cover rounded-md mb-4 bg-gray-100" />
                             <h3 className="font-semibold text-sm line-clamp-2 flex-grow">{product.name}</h3>
                             <div className="mt-4 pt-4 border-t">
-                                <p className="text-lg font-bold">${product.price}</p>
+                                <p className="text-lg font-bold">₹{product.price}</p>
                                 <p className="text-xs text-gray-500">{product.stockQuantity} in stock (Wholesaler)</p>
                                 <Button className="w-full mt-2" size="sm" onClick={() => handleAddClick(product)}>Add to my Store</Button>
                             </div>
@@ -263,10 +263,10 @@ export function AddFromWholesaler({ onClose, onProductAdded }: { onClose: () => 
                         <DialogTitle>List "{selectedProduct?.name}" in your store</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                        <p className="text-sm text-gray-600">This product costs you ${selectedProduct?.price}. Set your selling price and how many units you want to stock.</p>
+                        <p className="text-sm text-gray-600">This product costs you ₹{selectedProduct?.price}. Set your selling price and how many units you want to stock.</p>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="text-sm font-medium">Your Selling Price ($)</label>
+                                <label className="text-sm font-medium">Your Selling Price (₹)</label>
                                 <Input 
                                     type="number" 
                                     placeholder={`e.g. ${(parseFloat(selectedProduct?.price || '0') * 1.2).toFixed(2)}`}
