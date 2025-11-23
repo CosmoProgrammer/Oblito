@@ -29,7 +29,7 @@ async function seed() {
       { email: 'alice@example.com', password_hash: await hashPassword('hash_alice'), first_name: 'Alice', last_name: 'Anderson', role: 'customer' },
       { email: 'bob@example.com', password_hash: await hashPassword('hash_bob'), first_name: 'Bob', last_name: 'Brown', role: 'retailer' },
       { email: 'carol@example.com', password_hash: await hashPassword('hash_carol'), first_name: 'Carol', last_name: 'Clark', role: 'wholesaler' },
-      { email: 'david@example.com', password_hash: await hashPassword('hash_david'), first_name: 'David', last_name: 'Davis', role: 'retailer' },
+      { email: 'david@exacmple.com', password_hash: await hashPassword('hash_david'), first_name: 'David', last_name: 'Davis', role: 'retailer' },
       { email: 'emma@example.com', password_hash: await hashPassword('hash_emma'), first_name: 'Emma', last_name: 'Evans', role: 'retailer' },
       { email: 'frank@example.com', password_hash: await hashPassword('hash_frank'), first_name: 'Frank', last_name: 'Franklin', role: 'wholesaler' },
       { email: 'grace@example.com', password_hash: await hashPassword('hash_grace'), first_name: 'Grace', last_name: 'Green', role: 'wholesaler' },

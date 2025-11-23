@@ -60,6 +60,8 @@ Obviously, changes to `.env` also require container restarts.
     \dt
     \d <table_name>
     \q
+    docker-compose exec -T db pg_dump -U oblito_user oblito_db > backup.sql
+    docker-compose exec -T db psql -U oblito_user oblito_db < backup.sql
     ```
 
 
