@@ -43,7 +43,7 @@ const SearchCategories: React.FC<SearchCategoriesProps> = ({
             {/* Toggle button */}
             <button 
                 type="button" 
-                className={`h-full px-4 border-l border-gray-200 text-sm font-medium flex items-center gap-2 rounded-none transition-colors ${
+                className={`h-full p-3 border-y border-l border-gray-200 text-sm font-medium flex items-center gap-2 rounded-none transition-colors ${
                     isDropdownOpen || selectedCount > 0
                         ? "bg-gray-200 text-gray-900" 
                         : "bg-gray-100 text-gray-600 hover:text-gray-900 hover:bg-gray-200"

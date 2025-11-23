@@ -341,6 +341,40 @@ This document provides a comprehensive overview of all the API routes available 
         }
         ```
 
+### GET /recommendations
+
+-   **Description**: Retrieves a list of recommended products for the authenticated user based on their browsing history.
+-   **Authentication**: Required (JWT)
+-   **Query Parameters**:
+    -   `page` (number, optional, default: 1): The page number for pagination.
+    -   `limit` (number, optional, default: 10): The number of items per page.
+-   **Response**:
+    -   **200**:
+        ```json
+        {
+          "products": [
+            {
+              "id": "...",
+              "name": "Recommended Product",
+              "description": "Product Description",
+              "price": "125.00",
+              "categoryId": "...",
+              "imageURLs": ["url1", "url2"],
+              "creatorId": "...",
+              "createdAt": "...",
+              "stockQuantity": "5"
+            }
+          ],
+          "pagination": {
+            "totalCount": 1,
+            "totalPages": 1,
+            "currentPage": 1,
+            "limit": 10
+          }
+        }
+        ```
+    -   **401**: Unauthorized
+
 ### GET /products/:id
 
 -   **Description**: Retrieves a single product by its ID.
