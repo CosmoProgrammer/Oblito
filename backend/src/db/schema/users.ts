@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, pgEnum, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, pgEnum, timestamp, integer } from 'drizzle-orm/pg-core';
 
 export const UserRole = pgEnum('user_role', ['customer', 'retailer', 'wholesaler']);
 
@@ -14,6 +14,9 @@ export const users = pgTable('users', {
     facebookId: text('facebook_id').unique(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     profilePictureUrl: text('profile_picture_url'),
+    otp: text('otp'),
+    otpExpiresAt: timestamp('otp_expires_at', { withTimezone: true }),
+    otpAttempts: integer('otp_attempts').default(0),
 });
 
 export const usersSchema = {

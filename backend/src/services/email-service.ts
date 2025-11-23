@@ -13,6 +13,39 @@ const transporter = nodemailer.createTransport({
     },
 });
 
+export const sendOTPEmail = async (to: string, otp: string, userName: string) => {
+    const subject = 'Your Oblito OTP Code';
+    const text = `Dear ${userName},\n\nYour OTP code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, please ignore this email.\n\nThe Oblito Team`;
+    
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Your Oblito OTP Code</h2>
+            <p>Dear ${userName},</p>
+            <p>Your One-Time Password (OTP) code is:</p>
+            <div style="background-color: #f5f5f5; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                <h1 style="letter-spacing: 5px; color: #333;">${otp}</h1>
+            </div>
+            <p style="color: #666; font-size: 14px;">This code will expire in 10 minutes.</p>
+            <p style="color: #999; font-size: 12px;">If you didn't request this code, please ignore this email.</p>
+            <p style="margin-top: 30px; color: #999; font-size: 12px;">The Oblito Team</p>
+        </div>
+    `;
+
+    try {
+        await transporter.sendMail({
+            from: `"Oblito" <${process.env.EMAIL_USER}>`,
+            to,
+            subject,
+            text,
+            html,
+        });
+        console.log('OTP email sent to:', to);
+    } catch (error) {
+        console.error('Error sending OTP email:', error);
+        throw error;
+    }
+};
+
 export const sendOrderStatusUpdateEmail = async (to: string, orderId: string, newStatus: string, productName: string, customerName: string) => {
     const subject = `Order Status Update for ${productName}`;
     const text = `Dear ${customerName},
@@ -75,5 +108,6 @@ export const sendOrderConfirmationEmail = async (to: string, customerName: strin
     } catch (error) {
         console.error('Error sending order confirmation email:', error);
     }
+    
 };
 

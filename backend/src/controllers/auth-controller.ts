@@ -1,5 +1,7 @@
 import bcrypt from "bcrypt";
 import { z } from "zod";
+import type { Request, Response } from 'express';
+import crypto from 'crypto';
 
 import db  from "../db/index.js";
 import { eq } from "drizzle-orm";
@@ -9,6 +11,7 @@ import { warehouses } from "../db/schema/warehouses.js";
 
 import { signUpSchema, loginSchema } from "../validation/auth-validation.js";
 import { generateToken, setTokenCookie } from "../services/auth-service.js";
+import { sendOTPEmail } from '../services/email-service.js';
 
 export const handleGoogleCallback = async (req: any, res: any) => {
     try{
@@ -154,4 +157,112 @@ export const handleLogout = async (req: any, res: any) => {
         sameSite: 'strict',
     });
     res.status(200).json({ message: 'Logged out successfully' });
+};
+
+export const requestOTP = async (req: Request, res: Response) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+
+        const user = await db.query.users.findFirst({
+            where: eq(users.email, email.toLowerCase()),
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // Update user with OTP
+        await db.update(users)
+            .set({
+                otp: otp,
+                otpExpiresAt: otpExpiresAt,
+                otpAttempts: 0,
+            })
+            .where(eq(users.id, user.id));
+
+        // Send OTP via email
+        await sendOTPEmail(user.email, otp, user.firstName || 'User');
+
+        return res.status(200).json({ 
+            message: 'OTP sent successfully to your email',
+            email: user.email 
+        });
+    } catch (error) {
+        console.error('Error requesting OTP:', error);
+        return res.status(500).json({ message: 'Failed to send OTP', error: (error as any).message });
+    }
+};
+
+export const verifyOTP = async (req: Request, res: Response) => {
+    try {
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.status(400).json({ message: 'Email and OTP are required' });
+        }
+
+        const user = await db.query.users.findFirst({
+            where: eq(users.email, email.toLowerCase()),
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Check if OTP has expired
+        if (!user.otpExpiresAt || new Date() > user.otpExpiresAt) {
+            return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+        }
+
+        // Check OTP attempts (max 5)
+        if ((user.otpAttempts || 0) >= 5) {
+            return res.status(400).json({ message: 'Too many failed attempts. Please request a new OTP.' });
+        }
+
+        // Verify OTP
+        if (user.otp !== otp) {
+            await db.update(users)
+                .set({ otpAttempts: (user.otpAttempts || 0) + 1 })
+                .where(eq(users.id, user.id));
+            
+            return res.status(400).json({ message: 'Invalid OTP' });
+        }
+
+        // Clear OTP fields
+        await db.update(users)
+            .set({
+                otp: null,
+                otpExpiresAt: null,
+                otpAttempts: 0,
+            })
+            .where(eq(users.id, user.id));
+
+        // Generate JWT token for the user using the same method as login
+        const token = generateToken(user);
+
+        // Use the same cookie name as the login route (from setTokenCookie)
+        setTokenCookie(res, token);
+
+        return res.status(200).json({ 
+            message: 'OTP verified successfully',
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role,
+            }
+        });
+    } catch (error) {
+        console.error('Error verifying OTP:', error);
+        return res.status(500).json({ message: 'Failed to verify OTP', error: (error as any).message });
+    }
 };
